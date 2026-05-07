@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Item {
+  id               String            @id @default(cuid())
+  name             String
+  category         String
+  room             String?           @default("Supply")
+  shelf            String?
+  imageUrl         String?
+  sizes            ItemSize[]
+  transactionItems TransactionItem[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}
+
+model ItemSize {
+  id                     String                  @id @default(cuid())
+  size                   String
+  totalQuantity          Int
+  availableQuantity      Int
+  itemId                 String
+  item                   Item                    @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  transactionItemDetails TransactionItemDetail[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  role         Role          @default(USER)
+  transactions Transaction[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Transaction {
+  id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id])
+  status       TransactionStatus @default(IN_PROGRESS)
+  items        TransactionItem[]
+  checkoutDate DateTime          @default(now())
+  completedAt  DateTime?
+  returnDate   DateTime?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+}
+
+model TransactionItem {
+  id            String                  @id @default(cuid())
+  transactionId String
+  transaction   Transaction             @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  itemId        String
+  item          Item                    @relation(fields: [itemId], references: [id])
+  authQuantity  Int                     @default(1)
+  details       TransactionItemDetail[]
+}
+
+model TransactionItemDetail {
+  id                String          @id @default(cuid())
+  transactionItemId String
+  transactionItem   TransactionItem @relation(fields: [transactionItemId], references: [id], onDelete: Cascade)
+  itemSizeId        String
+  itemSize          ItemSize        @relation(fields: [itemSizeId], references: [id])
+  quantity          Int
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum TransactionStatus {
+  IN_PROGRESS
+  COMPLETED
+  RETURN_IN_PROGRESS
+  RETURNED
+}
