@@ -1,5 +1,4 @@
 import { Package, Search, Filter, Plus } from "lucide-react";
-import SignOutModal from "@/components/SignOutModal";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
