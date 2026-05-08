@@ -1,33 +1,35 @@
-import { NextAuthOptions } from "next-auth";
-import KeycloakProvider from "next-auth/providers/keycloak";
+import { NextAuthOptions } from 'next-auth';
+import OIDCProvider from 'next-auth/providers/oidc';
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    KeycloakProvider({
+    OIDCProvider({
       clientId: process.env.OIDC_CLIENT_ID!,
       clientSecret: process.env.OIDC_CLIENT_SECRET!,
       issuer: process.env.OIDC_ISSUER!,
+      authorization: { params: { scope: 'openid profile email' } },
       profile(profile) {
         return {
           id: profile.sub,
-          name: profile.name ?? profile.email?.split('@')[0],
+          name: profile.name,
           email: profile.email,
-          image: profile.picture,
         };
       },
     }),
   ],
   callbacks: {
-    jwt({ token, profile }) {
-      if (profile) {
-        token.name = profile.email?.split('@')[0];
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        return {
+          ...token,
+          accessToken: account.access_token,
+          id: user.id,
+        };
       }
       return token;
     },
-    session({ session, token }) {
-      if (session.user) {
-        session.user.name = token.name as string;
-      }
+    async session({ session, token }) {
+      session.user.id = token.id as string;
       return session;
     },
   },
@@ -35,3 +37,4 @@ export const authOptions: NextAuthOptions = {
     signIn: '/login',
   },
 };
+
