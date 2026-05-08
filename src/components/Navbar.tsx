@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { Package, Users, History, LayoutDashboard, Settings } from 'lucide-react';
+import { Package, Users, History, LayoutDashboard } from 'lucide-react';
 import Image from 'next/image';
 import { useState } from 'react';
+import { UserNav } from './UserNav';
 
 export default function Navbar() {
   const [logoError, setLogoError] = useState(false);
@@ -58,6 +59,9 @@ export default function Navbar() {
                 History
               </Link>
             </div>
+          </div>
+          <div className="flex items-center">
+            <UserNav />
           </div>
         </div>
       </div>
