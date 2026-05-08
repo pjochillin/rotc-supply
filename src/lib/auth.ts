@@ -24,12 +24,22 @@ export const authOptions: NextAuthOptions = {
       },
     },
   ],
+  session: {
+    strategy: 'jwt',
+  },
   callbacks: {
+    jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
     session({ session, user }) {
       session.user.id = user.id;
       return session;
     },
   },
+  debug: true,
   pages: {
     signIn: '/login',
   },
