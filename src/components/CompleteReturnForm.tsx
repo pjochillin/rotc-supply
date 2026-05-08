@@ -82,12 +82,23 @@ export default function CompleteReturnForm({
     
     setIsSubmitting(true);
     try {
-      const formattedData = Object.entries(itemDetails).map(([id, details]) => ({
-        transactionItemId: id,
-        details
-      }));
+      const itemsToReturn: { itemId: string; itemSizeId: string; quantity: number }[] = [];
+      for (const transactionItemId in itemDetails) {
+        const transactionItem = transaction.items.find(item => item.id === transactionItemId);
+        if (transactionItem) {
+          const { itemId } = transactionItem;
+          const details = itemDetails[transactionItemId];
+          for (const detail of details) {
+            itemsToReturn.push({
+              itemId,
+              itemSizeId: detail.itemSizeId,
+              quantity: detail.quantity,
+            });
+          }
+        }
+      }
 
-      await completeReturn(transaction.id, formattedData);
+      await completeReturn(transaction.id, itemsToReturn);
       router.push(`/users/${transaction.userId}`);
       router.refresh();
     } catch (error) {

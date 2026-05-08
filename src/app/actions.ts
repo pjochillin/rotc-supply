@@ -219,7 +219,7 @@ export async function initiateReturn(
     itemId: string;
     itemSizeId: string; 
     quantity: number; 
-  }[]
+  }[] = []
 ) {
   const transaction = await prisma.transaction.create({
     data: {

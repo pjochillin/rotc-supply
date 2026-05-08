@@ -28,7 +28,7 @@ interface TransactionItem {
 
 interface Transaction {
   id: string;
-  user: { name: string };
+  user: { name: string | null };
   items: TransactionItem[];
 }
 
