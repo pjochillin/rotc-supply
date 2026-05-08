@@ -28,14 +28,25 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt',
   },
   callbacks: {
+    async signIn({ user }) {
+      const dbUser = await prisma.user.findUnique({
+        where: { email: user.email! },
+      });
+      if (!dbUser) {
+        console.log(`[AUTH] Denying sign-in for unapproved user: ${user.email}`);
+        return false;
+      }
+      console.log(`[AUTH] Allowing sign-in for approved user: ${user.email}`);
+      return true;
+    },
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
       }
       return token;
     },
-    session({ session, user }) {
-      session.user.id = user.id;
+    session({ session, token }) {
+      session.user.id = token.id;
       return session;
     },
   },
