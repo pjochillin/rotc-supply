@@ -24,18 +24,9 @@ export const authOptions: NextAuthOptions = {
       },
     },
   ],
-  session: {
-    strategy: 'jwt',
-  },
   callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      session.user.id = token.id;
+    session({ session, user }) {
+      session.user.id = user.id;
       return session;
     },
   },
