@@ -52,7 +52,7 @@ export default function AddItemPage() {
     <div className="max-w-4xl mx-auto pb-12">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+          <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Add New Supply Item</h1>
@@ -68,7 +68,7 @@ export default function AddItemPage() {
 
         try {
           await createItem(formData);
-          router.push('/admin');
+          router.push('/');
           router.refresh();
         } catch (error) {
           alert('Error saving item. Please try again.');
@@ -175,7 +175,7 @@ export default function AddItemPage() {
             </div>
 
             <div className="flex items-center justify-end space-x-4">
-              <Link href="/admin" className="px-6 py-3 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</Link>
+              <Link href="/" className="px-6 py-3 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</Link>
               <button
                 type="submit"
                 disabled={isUploading}

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { User, Package, History, ArrowLeft, Clock, CheckCircle2, Printer, RotateCcw } from "lucide-react";
 import Link from "next/link";
+import { DeleteUserButton } from '@/components/DeleteUserButton';
 
 export default async function UserDetailPage({ 
   params 
@@ -33,18 +34,46 @@ export default async function UserDetailPage({
 
   if (!user) notFound();
 
-  // Calculate currently signed out items (COMPLETED transactions that haven't been RETURNED)
-  const currentlySignedOut = user.transactions
+  const itemMap = new Map<string, { name: string; size: string; quantity: number; imageUrl: string | null; }>();
+
+  // Process COMPLETED transactions to add items
+  user.transactions
     .filter(t => t.status === 'COMPLETED')
     .flatMap(t => t.items)
     .flatMap(i => i.details.map(d => ({
-      transactionId: i.transactionId,
+      itemSizeId: d.itemSizeId,
       name: i.item.name,
       size: d.itemSize.size,
       quantity: d.quantity,
-      imageUrl: i.item.imageUrl,
-      category: i.item.category
-    })));
+      imageUrl: i.item.imageUrl
+    })))
+    .forEach(item => {
+      const existing = itemMap.get(item.itemSizeId);
+      if (existing) {
+        existing.quantity += item.quantity;
+      } else {
+        itemMap.set(item.itemSizeId, { ...item });
+      }
+    });
+
+  // Process RETURNED transactions to subtract items
+  user.transactions
+    .filter(t => t.status === 'RETURNED')
+    .flatMap(t => t.items)
+    .flatMap(i => i.details.map(d => ({
+      itemSizeId: d.itemSizeId,
+      quantity: d.quantity
+    })))
+    .forEach(returnedItem => {
+      const existing = itemMap.get(returnedItem.itemSizeId);
+      if (existing) {
+        existing.quantity -= returnedItem.quantity;
+      }
+    });
+
+  // Filter out items with zero or negative quantity and convert map to array
+  const currentlySignedOut = Array.from(itemMap.values()).filter(item => item.quantity > 0);
+
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
@@ -67,12 +96,13 @@ export default async function UserDetailPage({
             Print OCIE Record
           </Link>
           <Link
-            href={`/admin/transactions/return/new?userId=${id}`}
+            href={`/transactions/return/new?userId=${id}`}
             className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-red-700 hover:bg-red-800 transition-all"
           >
             <RotateCcw className="mr-2 h-4 w-4" />
             Process Return
           </Link>
+          <DeleteUserButton userId={id} />
         </div>
       </div>
 

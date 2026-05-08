@@ -59,7 +59,7 @@ export default function NewReturnPage({
       });
 
       const transactionId = await initiateReturn(user.id, returnData);
-      router.push(`/admin/transactions/${transactionId}/print-return`);
+      router.push(`/transactions/${transactionId}/print-return`);
     } catch (error) {
       alert('Error initiating return');
       setIsSubmitting(false);

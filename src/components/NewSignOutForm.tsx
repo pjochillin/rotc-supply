@@ -68,7 +68,7 @@ export default function NewSignOutPage({
         authQuantity
       }));
       const transactionId = await initiateSignOut(selectedUserId, itemsData);
-      router.push(`/admin/transactions/${transactionId}/print`);
+      router.push(`/transactions/${transactionId}/print`);
     } catch (error) {
       alert('Error initiating sign-out');
       setIsSubmitting(false);
@@ -79,7 +79,7 @@ export default function NewSignOutPage({
     <div className="max-w-6xl mx-auto pb-12">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+          <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <div>

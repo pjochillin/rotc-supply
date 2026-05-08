@@ -43,7 +43,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
       } catch (error) {
         console.error('Failed to fetch item:', error);
         alert('Could not load item details.');
-        router.push('/admin');
+        router.push('/');
       }
     }
     fetchItem();
@@ -88,7 +88,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
     <div className="max-w-4xl mx-auto pb-12">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+          <Link href="/inventory" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Edit Item: {item.name}</h1>
@@ -102,7 +102,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
 
         try {
           await updateItem(id, formData);
-          router.push('/admin');
+          router.push('/');
           router.refresh();
         } catch (error) {
           alert('Error updating item. Please try again.');

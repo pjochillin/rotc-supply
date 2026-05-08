@@ -30,9 +30,9 @@ export default async function PrintTransactionPage({
     <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0">
       {/* UI Controls (Hidden on print) */}
       <div className="mb-8 flex items-center justify-between print:hidden">
-        <Link href="/admin" className="flex items-center text-gray-600 hover:text-gray-900 font-bold">
+        <Link href="/" className="flex items-center text-gray-600 hover:text-gray-900 font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Admin
+          Back to Home
         </Link>
         <PrintButton />
       </div>

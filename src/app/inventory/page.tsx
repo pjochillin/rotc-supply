@@ -44,7 +44,7 @@ export default async function InventoryPage() {
           </p>
         </div>
         <Link
-          href="/admin/add-item"
+          href="/add-item"
           className="inline-flex items-center rounded-md bg-red-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
         >
           <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
@@ -128,13 +128,13 @@ export default async function InventoryPage() {
                 </td>
                 <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                   <Link 
-                    href={`/admin/edit-item/${item.id}`}
+                    href={`/edit-item/${item.id}`} 
                     className="text-red-700 hover:text-red-900 mr-4 font-medium"
                   >
                     Edit
                   </Link>
                   <Link 
-                    href="/admin/transactions/new"
+                    href="/transactions/new"
                     className="text-gray-600 hover:text-gray-900 font-medium"
                   >
                     Sign Out

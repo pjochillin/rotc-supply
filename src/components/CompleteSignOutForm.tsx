@@ -88,7 +88,7 @@ export default function CompleteSignOutForm({
       }));
 
       await completeSignOut(transaction.id, formattedData);
-      router.push('/admin');
+      router.push('/');
       router.refresh();
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Error completing sign-out');
@@ -100,7 +100,7 @@ export default function CompleteSignOutForm({
     <div className="max-w-5xl mx-auto pb-12">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href="/admin" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+          <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <div>

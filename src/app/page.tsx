@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { Package, Trash2, Edit, UserPlus, Plus, Clock, ClipboardList, CheckCircle2, Printer, Users, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Package, Edit, UserPlus, Plus, Clock, ClipboardList, CheckCircle2, Printer, Users, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { deleteItem } from "@/app/actions";
 import Link from "next/link";
+import DeleteTransactionButton from "@/components/DeleteTransactionButton";
+import DeleteItemButton from "@/components/DeleteItemButton";
 
 export default async function Home() {
   const [items, users, inProgressTransactions, totalItemsCount, activeTransactionsCount, usersCount, recentTransactionsData] = await Promise.all([
@@ -57,7 +59,7 @@ export default async function Home() {
           </p>
         </div>
         <Link
-          href="/admin/transactions/new"
+          href="/transactions/new"
           className="inline-flex items-center px-6 py-3 border border-transparent text-sm font-bold rounded-xl shadow-lg text-white bg-red-700 hover:bg-red-800 transition-all"
         >
           <Plus className="-ml-1 mr-2 h-5 w-5" aria-hidden="true" />
@@ -143,17 +145,18 @@ export default async function Home() {
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end space-x-3">
                               <Link 
-                                href={t.status === 'IN_PROGRESS' ? `/admin/transactions/${t.id}/print` : `/admin/transactions/${t.id}/print-return`} 
+                                href={t.status === 'IN_PROGRESS' ? `/transactions/${t.id}/print` : `/transactions/${t.id}/print-return`} 
                                 className="text-gray-500 hover:text-gray-900"
                               >
                                 <Printer className="h-4 w-4" />
                               </Link>
                               <Link 
-                                href={t.status === 'IN_PROGRESS' ? `/admin/transactions/complete/${t.id}` : `/admin/transactions/return/complete/${t.id}`} 
+                                href={t.status === 'IN_PROGRESS' ? `/transactions/complete/${t.id}` : `/transactions/return/confirm/${t.id}`} 
                                 className="text-green-600 hover:text-green-800"
                               >
                                 <CheckCircle2 className="h-4 w-4" />
                               </Link>
+                              <DeleteTransactionButton transactionId={t.id} />
                             </div>
                           </td>
                         </tr>
@@ -173,7 +176,7 @@ export default async function Home() {
                 <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Inventory Management</h2>
               </div>
               <Link
-                href="/admin/add-item"
+                href="/add-item"
                 className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-bold rounded-lg text-white bg-red-700 hover:bg-red-800 shadow-sm transition-all"
               >
                 <Plus className="-ml-0.5 mr-1 h-4 w-4" aria-hidden="true" />
@@ -221,12 +224,10 @@ export default async function Home() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex justify-end space-x-2">
-                          <Link href={`/admin/edit-item/${item.id}`} className="text-blue-600 hover:text-blue-900">
+                          <Link href={`/edit-item/${item.id}`} className="text-blue-600 hover:text-blue-900">
                             <Edit className="h-4 w-4" />
                           </Link>
-                          <button className="text-red-600 hover:text-red-900">
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          <DeleteItemButton itemId={item.id} />
                         </div>
                       </td>
                     </tr>
@@ -244,7 +245,7 @@ export default async function Home() {
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
               <div className="flex items-center">
                 <Users className="h-5 w-5 text-red-700 mr-2" />
-                <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Cadet Profiles</h2>
+                <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Users</h2>
               </div>
               <button className="text-xs font-black text-red-700 hover:text-red-800 bg-red-50 px-2 py-1 rounded-lg border border-red-100">
                 <UserPlus className="h-4 w-4" />
@@ -257,9 +258,6 @@ export default async function Home() {
                   href={`/users/${user.id}`}
                   className="flex items-center px-6 py-5 hover:bg-red-50 transition-all group border-l-4 border-transparent hover:border-red-700 relative"
                 >
-                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-700 font-black text-sm mr-4 group-hover:scale-110 transition-transform border-2 border-white shadow-sm">
-                    {user.name.charAt(0)}
-                  </div>
                   <div className="flex-grow">
                     <div className="flex items-center justify-between">
                       <p className="text-base font-black text-gray-900 group-hover:text-red-700 transition-colors leading-tight">{user.name}</p>

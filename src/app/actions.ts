@@ -32,7 +32,6 @@ export async function createItem(formData: FormData) {
   });
 
   revalidatePath('/inventory');
-  revalidatePath('/admin');
   revalidatePath('/');
 }
 
@@ -79,14 +78,12 @@ export async function updateItem(id: string, formData: FormData) {
   });
 
   revalidatePath('/inventory');
-  revalidatePath('/admin');
   revalidatePath('/');
 }
 
 export async function deleteItem(id: string) {
   await prisma.item.delete({ where: { id } });
   revalidatePath('/inventory');
-  revalidatePath('/admin');
   revalidatePath('/');
 }
 
@@ -101,8 +98,42 @@ export async function createUser(formData: FormData) {
   });
 
   revalidatePath('/users');
-  revalidatePath('/admin');
 }
+
+export async function deleteUser(userId: string) {
+  await prisma.$transaction(async (tx) => {
+    // 1. Get the user's current outstanding OCIE record.
+    const ocieItems = await getUserOcie(userId);
+
+    // 2. For each outstanding item, decrement the total quantity in the master supply record.
+    for (const item of ocieItems) {
+      if (item.quantity > 0) {
+        await tx.itemSize.update({
+          where: { id: item.itemSizeId },
+          data: {
+            totalQuantity: { decrement: item.quantity },
+          },
+        });
+      }
+    }
+
+    // 3. Delete all transactions associated with the user.
+    await tx.transaction.deleteMany({
+      where: { userId: userId },
+    });
+
+    // 4. Finally, delete the user.
+    await tx.user.delete({
+      where: { id: userId },
+    });
+  });
+
+  // 5. Revalidate paths to reflect the changes.
+  revalidatePath('/users');
+  revalidatePath('/inventory');
+  revalidatePath('/');
+}
+
 
 // Transaction Actions
 
@@ -124,7 +155,6 @@ export async function initiateSignOut(userId: string, items: { itemId: string; a
     },
   });
 
-  revalidatePath('/admin');
   revalidatePath('/history');
   revalidatePath('/');
   return transaction.id;
@@ -180,71 +210,198 @@ export async function completeSignOut(
 
   revalidatePath('/inventory');
   revalidatePath('/history');
-  revalidatePath('/admin');
   revalidatePath('/');
 }
 
-export async function initiateReturn(userId: string, items: { itemId: string; itemSizeId: string; quantity: number }[]) {
+export async function initiateReturn(
+  userId: string, 
+  itemsToReturn: { 
+    itemId: string;
+    itemSizeId: string; 
+    quantity: number; 
+  }[]
+) {
   const transaction = await prisma.transaction.create({
     data: {
       userId,
-      status: 'RETURN_IN_PROGRESS',
+      status: 'RETURNED',
+      returnDate: new Date(),
       items: {
-        create: items.map(item => ({
+        create: (itemsToReturn || []).map(item => ({
           itemId: item.itemId,
-          authQuantity: item.quantity, // We reuse authQuantity to store how much is being returned
-        })),
-      },
+          authQuantity: item.quantity,
+          details: {
+            create: {
+              itemSizeId: item.itemSizeId,
+              quantity: item.quantity,
+            }
+          }
+        }))
+      }
     },
   });
 
-  revalidatePath('/admin');
-  revalidatePath('/history');
-  revalidatePath(`/users/${userId}`);
+  await prisma.$transaction(async (tx) => {
+    for (const item of itemsToReturn || []) {
+      if (item.quantity <= 0) continue;
+
+      await tx.itemSize.update({
+        where: { id: item.itemSizeId },
+        data: {
+          availableQuantity: { increment: item.quantity },
+        },
+      });
+    }
+  });
+
+
+
   return transaction.id;
 }
 
+export async function deleteTransaction(id: string) {
+  await prisma.transaction.delete({ where: { id } });
+  revalidatePath('/');
+  revalidatePath('/history');
+}
+
+export async function getUserOcie(userId: string) {
+  if (!userId) {
+    throw new Error('User ID is required');
+  }
+
+  // Aggregate all issued quantities
+  const issuedAggregates = await prisma.transactionItemDetail.groupBy({
+    by: ['itemSizeId'],
+    where: {
+      transactionItem: {
+        transaction: {
+          userId: userId,
+          status: 'COMPLETED',
+        },
+      },
+    },
+    _sum: {
+      quantity: true,
+    },
+  });
+
+  // Aggregate all returned quantities
+  const returnedAggregates = await prisma.transactionItemDetail.groupBy({
+    by: ['itemSizeId'],
+    where: {
+      transactionItem: {
+        transaction: {
+          userId: userId,
+          status: 'RETURNED',
+        },
+      },
+    },
+    _sum: {
+      quantity: true,
+    },
+  });
+
+  // Create a map of returned quantities for easy lookup
+  const returnedMap = new Map<string, number>();
+  returnedAggregates.forEach(agg => {
+    returnedMap.set(agg.itemSizeId, agg._sum.quantity || 0);
+  });
+
+  // Calculate the net quantity for each issued item
+  const netOcie: { itemSizeId: string; netQuantity: number }[] = [];
+  issuedAggregates.forEach(agg => {
+    const issuedQty = agg._sum.quantity || 0;
+    const returnedQty = returnedMap.get(agg.itemSizeId) || 0;
+    const netQty = issuedQty - returnedQty;
+
+    if (netQty > 0) {
+      netOcie.push({
+        itemSizeId: agg.itemSizeId,
+        netQuantity: netQty,
+      });
+    }
+  });
+
+  // Fetch full details for the items the user currently holds
+  const itemSizeIds = netOcie.map(item => item.itemSizeId);
+  const itemDetails = await prisma.itemSize.findMany({
+    where: {
+      id: { in: itemSizeIds },
+    },
+    include: {
+      item: true,
+    },
+  });
+
+  // Combine the net quantities with the full item details
+  const result = itemDetails.map(detail => {
+    const ocieItem = netOcie.find(o => o.itemSizeId === detail.id);
+    return {
+      itemSizeId: detail.id,
+      itemId: detail.item.id,
+      name: detail.item.name,
+      size: detail.size,
+      quantity: ocieItem?.netQuantity || 0,
+    };
+  }).sort((a, b) => a.name.localeCompare(b.name) || a.size.localeCompare(b.size));
+
+  return result;
+}
+
+
 export async function completeReturn(
   transactionId: string, 
-  itemsData: { 
-    transactionItemId: string; 
-    details: { itemSizeId: string; quantity: number }[] 
+  itemsToReturn: { 
+    itemId: string;
+    itemSizeId: string; 
+    quantity: number; 
   }[]
 ) {
   await prisma.$transaction(async (tx) => {
-    for (const item of itemsData) {
-      for (const detail of item.details) {
-        // 1. Create detail record
-        await tx.transactionItemDetail.create({
-          data: {
-            transactionItemId: item.transactionItemId,
-            itemSizeId: detail.itemSizeId,
-            quantity: detail.quantity,
-          },
-        });
+    for (const item of itemsToReturn) {
+      if (item.quantity <= 0) continue; // Skip if nothing is being returned
 
-        // 2. Add back to inventory
-        await tx.itemSize.update({
-          where: { id: detail.itemSizeId },
-          data: {
-            availableQuantity: { increment: detail.quantity },
-          },
-        });
-      }
+      // 1. Create a TransactionItem for the return
+      const transactionItem = await tx.transactionItem.create({
+        data: {
+          transactionId,
+          itemId: item.itemId,
+          authQuantity: item.quantity, // Storing returned quantity here
+        },
+      });
+
+      // 2. Create the TransactionItemDetail
+      await tx.transactionItemDetail.create({
+        data: {
+          transactionItemId: transactionItem.id,
+          itemSizeId: item.itemSizeId,
+          quantity: item.quantity,
+        },
+      });
+
+      // 3. Add stock back to inventory
+      await tx.itemSize.update({
+        where: { id: item.itemSizeId },
+        data: {
+          availableQuantity: { increment: item.quantity },
+        },
+      });
     }
 
-    // 3. Mark transaction as returned
-    await tx.transaction.update({
+    // 4. Mark the overall transaction as RETURNED
+    const transaction = await tx.transaction.update({
       where: { id: transactionId },
       data: {
         status: 'RETURNED',
         returnDate: new Date(),
       },
     });
+
+    revalidatePath(`/users/${transaction.userId}`);
   });
 
   revalidatePath('/inventory');
   revalidatePath('/history');
-  revalidatePath('/admin');
   revalidatePath('/');
 }
