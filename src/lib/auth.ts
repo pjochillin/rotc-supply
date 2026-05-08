@@ -10,7 +10,7 @@ export const authOptions: NextAuthOptions = {
       name: 'Cornell',
       type: 'oauth',
       wellKnown: 'https://shibidp.cit.cornell.edu/.well-known/openid-configuration',
-      authorization: { params: { scope: 'openid profile email' } },
+      authorization: { params: { scope: 'openid profile' } },
       clientId: process.env.OIDC_CLIENT_ID!,
       clientSecret: process.env.OIDC_CLIENT_SECRET!,
       idToken: true,
