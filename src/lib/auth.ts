@@ -1,12 +1,9 @@
-import { NextAuthOptions, User, Session } from 'next-auth';
-
-interface CustomSession extends Session {
-  user: User & {
-    id: string;
-  };
-}
+import { NextAuthOptions } from 'next-auth';
+import { PrismaAdapter } from '@next-auth/prisma-adapter';
+import { prisma } from '@/lib/prisma';
 
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(prisma),
   providers: [
     {
       id: 'oidc',
@@ -27,24 +24,8 @@ export const authOptions: NextAuthOptions = {
       },
     },
   ],
-  callbacks: {
-    async jwt({ token, user, account }) {
-      if (account && user) {
-        return {
-          ...token,
-          accessToken: account.access_token,
-          id: user.id,
-        };
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      const customSession = session as CustomSession;
-      if (customSession.user) {
-        customSession.user.id = token.id as string;
-      }
-      return customSession;
-    },
+  session: {
+    strategy: 'jwt',
   },
   pages: {
     signIn: '/login',

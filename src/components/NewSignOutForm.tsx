@@ -18,7 +18,7 @@ interface Item {
 interface UserData {
   id: string;
   name: string | null;
-  email: string;
+  email: string | null;
 }
 
 export default function NewSignOutPage({ 
