@@ -1,13 +1,23 @@
-import { NextAuthOptions } from 'next-auth';
-import OIDCProvider from 'next-auth/providers/oidc';
+import { NextAuthOptions, User, Session } from 'next-auth';
+
+interface CustomSession extends Session {
+  user: User & {
+    id: string;
+  };
+}
 
 export const authOptions: NextAuthOptions = {
   providers: [
-    OIDCProvider({
+    {
+      id: 'oidc',
+      name: 'Cornell',
+      type: 'oauth',
+      wellKnown: 'https://shibidp.cit.cornell.edu/.well-known/openid-configuration',
+      authorization: { params: { scope: 'openid profile email' } },
       clientId: process.env.OIDC_CLIENT_ID!,
       clientSecret: process.env.OIDC_CLIENT_SECRET!,
-      issuer: process.env.OIDC_ISSUER!,
-      authorization: { params: { scope: 'openid profile email' } },
+      idToken: true,
+      checks: ['pkce', 'state'],
       profile(profile) {
         return {
           id: profile.sub,
@@ -15,7 +25,7 @@ export const authOptions: NextAuthOptions = {
           email: profile.email,
         };
       },
-    }),
+    },
   ],
   callbacks: {
     async jwt({ token, user, account }) {
@@ -29,8 +39,11 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id as string;
-      return session;
+      const customSession = session as CustomSession;
+      if (customSession.user) {
+        customSession.user.id = token.id as string;
+      }
+      return customSession;
     },
   },
   pages: {
