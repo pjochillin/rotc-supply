@@ -48,30 +48,33 @@ export default function InventoryList({ items }: InventoryListProps) {
     return filtered;
   }, [items, searchQuery, selectedCategory]);
 
+  const getTotalStock = (sizes: Item['sizes']) => {
+    return sizes.reduce((acc, s) => acc + s.total, 0);
+  };
+
+  const getAvailableStock = (sizes: Item['sizes']) => {
+    return sizes.reduce((acc, s) => acc + s.available, 0);
+  };
+
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+    <div className="space-y-6 min-w-[375px]">
+      <div className="md:flex md:items-center md:justify-between">
+        <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
           <p className="mt-1 text-sm text-gray-500">
             Manage your supply items and stock levels.
           </p>
         </div>
-        <Link
-          href="/add-item"
-          className="inline-flex items-center rounded-md bg-red-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
-        >
-          <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
-          Add Item
-        </Link>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <div className="flex flex-col md:flex-row gap-4">
         <div className="relative flex-grow">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
           </div>
           <input
+            suppressHydrationWarning
             type="text"
             className="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6"
             placeholder="Search items..."
@@ -81,8 +84,9 @@ export default function InventoryList({ items }: InventoryListProps) {
         </div>
         <div className="relative">
           <button 
+            suppressHydrationWarning
             onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset transition-colors ${(selectedCategory && selectedCategory !== 'All') || isFilterOpen ? 'bg-red-50 text-red-700 ring-red-300 hover:bg-red-100' : 'bg-white text-gray-900 ring-gray-300 hover:bg-gray-50'} w-full sm:w-auto justify-center`}
+            className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset transition-colors ${(selectedCategory && selectedCategory !== 'All') || isFilterOpen ? 'bg-red-50 text-red-700 ring-red-300 hover:bg-red-100' : 'bg-white text-gray-900 ring-gray-300 hover:bg-gray-50'} w-full justify-center md:w-auto`}
           >
             {isFilterOpen ? (
               <X className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
@@ -134,95 +138,135 @@ export default function InventoryList({ items }: InventoryListProps) {
             )}
           </AnimatePresence>
         </div>
+        <Link
+          href="/inventory/new"
+          className="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 md:w-auto w-full"
+          >
+          <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+          Add Item
+        </Link>
       </div>
 
-      <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead className="bg-gray-50">
-            <tr>
-              <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">
-                Item Name
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                Sizes & Availability
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                Total Stock
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
-                Location
-              </th>
-              <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
+      <div>
+        <div className="hidden sm:block overflow-x-auto shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+          <table className="min-w-full divide-y divide-gray-300">
+            <thead className="bg-gray-50">
+              <tr>
+                <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Item Name</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Sizes & Availability</th>
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Total Stock</th>
+                <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-900">Location</th>
+                <th scope="col" className="relative py-3.5 pl-3 pr-4 sm:pr-6"><span className="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {filteredItems.map((item) => (
+                <tr key={item.id}>
+                  <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 flex-shrink-0">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-md object-cover border shadow-sm" />
+                        ) : (
+                          <div className="h-10 w-10 bg-gray-100 rounded-md flex items-center justify-center border border-dashed">
+                            <Package className="h-6 w-6 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="ml-4">
+                        <div className="font-bold text-gray-900 whitespace-normal">{item.name}</div>
+                        <div className="text-gray-500">{item.category}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-500">
+                    <div className="flex flex-wrap gap-2">
+                      {item.sizes.length === 1 && item.sizes[0].size === 'Standard' ? (
+                        null
+                      ) : (
+                        item.sizes.map(s => (
+                          <div key={s.id} className="flex flex-col border rounded p-1 min-w-[60px] bg-gray-50">
+                            <span className="text-[10px] font-bold text-gray-500 uppercase">{s.size}</span>
+                            <div className="flex items-baseline space-x-1">
+                              <span className={`text-sm font-bold ${s.available < 3 ? 'text-red-600' : 'text-gray-900'}`}>{s.available}</span>
+                              <span className="text-[10px] text-gray-400">/ {s.total}</span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-4 text-sm text-gray-500">
+                    <div className="font-bold text-gray-900">{getAvailableStock(item.sizes)} / {getTotalStock(item.sizes)}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
+                    <div className="text-xs text-gray-400">Room: {item.room || '-'}</div>
+                    <div className="font-medium text-gray-700">Shelf: {item.shelf || '-'}</div>
+                  </td>
+                  <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
+                    <Link href={`/inventory/edit/${item.id}`} className="text-red-700 hover:text-red-900 font-medium">Edit</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="sm:hidden">
+          <ul role="list" className="divide-y divide-gray-200 shadow ring-1 ring-black ring-opacity-5 rounded-lg">
             {filteredItems.map((item) => (
-              <tr key={item.id}>
-                <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                  <div className="flex items-center">
+              <li key={item.id} className="bg-white px-4 py-4 rounded-xl">
+                <div className="flex items-center space-x-4">
+                  <div className="h-12 w-12 flex-shrink-0">
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-md object-cover mr-3 border shadow-sm" />
+                      <img src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-md object-cover border shadow-sm" />
                     ) : (
-                      <div className="h-10 w-10 bg-gray-100 rounded-md flex items-center justify-center mr-3 border border-dashed">
-                        <Package className="h-6 w-6 text-gray-400" />
+                      <div className="h-12 w-12 bg-gray-100 rounded-md flex items-center justify-center border border-dashed">
+                        <Package className="h-8 w-8 text-gray-400" />
                       </div>
                     )}
-                    <div>
-                      <div className="font-bold text-gray-900">{item.name}</div>
-                      <span className="inline-flex items-center rounded-full bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
-                        {item.category}
-                      </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-bold text-gray-900 truncate">{item.name}</p>
+                        <p className="text-sm text-gray-500">{item.category}</p>
+                      </div>
+                      <Link href={`/inventory/edit/${item.id}`} className="text-red-700 hover:text-red-900 font-medium ml-4 flex-shrink-0">Edit</Link>
+                    </div>
+                    <div className="mt-2 flex flex-col space-y-2">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500">Total Stock</span>
+                        <span className="text-lg font-bold">{getAvailableStock(item.sizes)} / {getTotalStock(item.sizes)}</span>
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-xs text-gray-500">Location</span>
+                        <span className="font-medium">{item.room || '-'} / {item.shelf || '-'}</span>
+                      </div>
                     </div>
                   </div>
-                </td>
-                <td className="px-3 py-4 text-sm text-gray-500">
+                </div>
+                <div className="mt-4">
                   <div className="flex flex-wrap gap-2">
                     {item.sizes.length === 1 && item.sizes[0].size === 'Standard' ? (
-                      <div className="text-sm italic text-gray-400"></div>
+                       null
                     ) : (
                       item.sizes.map(s => (
-                        <div key={s.id} className="flex flex-col border rounded p-1 min-w-[60px] bg-gray-50">
-                          <span className="text-[10px] font-bold text-gray-500 uppercase">{s.size}</span>
-                          <div className="flex items-baseline space-x-1">
-                            <span className={`text-sm font-bold ${s.available < 3 ? 'text-red-600' : 'text-gray-900'}`}>
-                              {s.available}
-                            </span>
-                            <span className="text-[10px] text-gray-400">/ {s.total}</span>
+                        <div key={s.id} className="flex flex-col border rounded p-1.5 min-w-[70px] bg-gray-50 flex-grow text-center">
+                          <span className="text-xs font-bold text-gray-500 uppercase">{s.size}</span>
+                          <div className="flex items-baseline justify-center space-x-1">
+                            <span className={`text-lg font-bold ${s.available < 3 ? 'text-red-600' : 'text-gray-900'}`}>{s.available}</span>
+                            <span className="text-sm text-gray-400">/ {s.total}</span>
                           </div>
                         </div>
                       ))
                     )}
                   </div>
-                </td>
-                <td className="px-3 py-4 text-sm text-gray-500">
-                  <div className="font-bold text-gray-900">
-                    {item.sizes.reduce((acc, s) => acc + s.available, 0)} / {item.sizes.reduce((acc, s) => acc + s.total, 0)}
-                  </div>
-                </td>
-                <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                  <div className="text-xs text-gray-400">Room: {item.room || '-'}</div>
-                  <div className="font-medium text-gray-700">Shelf: {item.shelf || '-'}</div>
-                </td>
-                <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                  <Link 
-                    href={`/edit-item/${item.id}`} 
-                    className="text-red-700 hover:text-red-900 mr-4 font-medium"
-                  >
-                    Edit
-                  </Link>
-                  <Link 
-                    href="/transactions/new"
-                    className="text-gray-600 hover:text-gray-900 font-medium"
-                  >
-                    Sign Out
-                  </Link>
-                </td>
-              </tr>
+                </div>
+              </li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        </div>
       </div>
     </div>
   );
