@@ -64,20 +64,20 @@ async function main() {
   // 1. Create a COMPLETED transaction
   await prisma.transaction.create({
     data: {
-      recipientId: user1.id,
-      initiatorId: user1.id, // Assuming user1 initiated this for simplicity
-      completerId: user1.id, // Assuming user1 completed this for simplicity
+      recipient: { connect: { id: user1.id } },
+      initiator: { connect: { id: user1.id } },
+      completer: { connect: { id: user1.id } },
       status: 'COMPLETED',
       completedAt: new Date(),
       items: {
         create: [
           {
-            itemId: item1.id,
+            item: { connect: { id: item1.id } },
             authQuantity: 2,
             details: {
               create: [
                 {
-                  itemSizeId: sizes1[0].id,
+                  itemSize: { connect: { id: sizes1[0].id } },
                   quantity: 2,
                 }
               ]
@@ -91,13 +91,13 @@ async function main() {
   // 2. Create an IN_PROGRESS transaction
   await prisma.transaction.create({
     data: {
-      recipientId: user2.id,
-      initiatorId: user1.id, // Assuming user1 initiated this for simplicity
+      recipient: { connect: { id: user2.id } },
+      initiator: { connect: { id: user1.id } }, // Assuming user1 initiated this for simplicity
       status: 'IN_PROGRESS',
       items: {
         create: [
           {
-            itemId: item3.id,
+            item: { connect: { id: item3.id } },
             authQuantity: 1,
           }
         ]

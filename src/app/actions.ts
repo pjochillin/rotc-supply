@@ -113,7 +113,35 @@ export async function updateItem(id: string, formData: FormData) {
 }
 
 export async function deleteItem(id: string) {
-  await prisma.item.delete({ where: { id } });
+  await prisma.$transaction(async (tx) => {
+    // First, find all transaction items related to this item
+    const transactionItems = await tx.transactionItem.findMany({
+      where: { itemId: id },
+      select: { id: true }
+    });
+    const transactionItemIds = transactionItems.map(ti => ti.id);
+
+    // If there are related transaction items, delete their details first
+    if (transactionItemIds.length > 0) {
+      await tx.transactionItemDetail.deleteMany({
+        where: { transactionItemId: { in: transactionItemIds } }
+      });
+    }
+
+    // Now delete the transaction items themselves
+    await tx.transactionItem.deleteMany({
+      where: { itemId: id }
+    });
+
+    // Delete all sizes associated with this item
+    await tx.itemSize.deleteMany({
+      where: { itemId: id }
+    });
+
+    // Finally, delete the item itself
+    await tx.item.delete({ where: { id } });
+  });
+
   revalidatePath('/inventory');
   revalidatePath('/');
 }
