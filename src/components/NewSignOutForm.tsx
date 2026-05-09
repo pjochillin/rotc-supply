@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, User, Package, ArrowLeft, Plus, X, ClipboardList } from 'lucide-react';
-import { initiateSignOut } from '@/app/actions';
+import { Search, User, Package, ArrowLeft, Plus, X, ClipboardList, Users, Check } from 'lucide-react';
+import { initiateSignOut, initiateBatchSignOut } from '@/app/actions';
 import Link from 'next/link';
 
 interface Item {
@@ -29,7 +29,9 @@ export default function NewSignOutPage({
   items: Item[] 
 }) {
   const router = useRouter();
-  const [selectedUserId, setSelectedUserId] = useState('');
+  const [isBatchMode, setIsBatchMode] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,6 +40,19 @@ export default function NewSignOutPage({
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const filteredUsers = users.filter(user =>
+    user.name?.toLowerCase().includes(userSearchTerm.toLowerCase())
+  );
+
+  const handleUserToggle = (userId: string) => {
+    setSelectedUserIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId) 
+        : [...prev, userId]
+    );
+  };
+
 
   const toggleItem = (itemId: string) => {
     setSelectedItems(prev => {
@@ -52,14 +67,18 @@ export default function NewSignOutPage({
   };
 
   const updateQty = (itemId: string, qty: number) => {
-    setSelectedItems(prev => ({
-      ...prev,
-      [itemId]: Math.max(1, qty)
-    }));
+    if (qty < 1) {
+      toggleItem(itemId);
+    } else {
+      setSelectedItems(prev => ({
+        ...prev,
+        [itemId]: qty
+      }));
+    }
   };
 
   const handleSubmit = async () => {
-    if (!selectedUserId || Object.keys(selectedItems).length === 0) return;
+    if (selectedUserIds.length === 0 || Object.keys(selectedItems).length === 0) return;
     
     setIsSubmitting(true);
     try {
@@ -67,8 +86,14 @@ export default function NewSignOutPage({
         itemId,
         authQuantity
       }));
-      const transactionId = await initiateSignOut(selectedUserId, itemsData);
-      router.push(`/transactions/${transactionId}/print`);
+
+      if (isBatchMode) {
+        await initiateBatchSignOut(selectedUserIds, itemsData);
+        router.push('/'); // Redirect to dashboard after batch creation
+      } else {
+        const transactionId = await initiateSignOut(selectedUserIds[0], itemsData);
+        router.push(`/transactions/${transactionId}/print`);
+      }
     } catch (error) {
       alert('Error initiating sign-out');
       setIsSubmitting(false);
@@ -93,22 +118,66 @@ export default function NewSignOutPage({
         {/* Step 1: Pick User */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-            <div className="flex items-center mb-4">
-              <div className="bg-red-100 p-2 rounded-lg mr-3">
-                <User className="h-5 w-5 text-red-700" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center">
+                <div className="bg-red-100 p-2 rounded-lg mr-3">
+                  <User className="h-5 w-5 text-red-700" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">1. Select Cadet(s)</h2>
               </div>
-              <h2 className="text-lg font-bold text-gray-900">1. Select Cadet</h2>
+              <button 
+                onClick={() => setIsBatchMode(!isBatchMode)}
+                className={`flex items-center text-xs font-black px-3 py-1.5 rounded-lg border transition-colors ${
+                  isBatchMode
+                    ? 'bg-red-700 text-white border-red-700'
+                    : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                }`}>
+                <Users className="h-3 w-3 mr-1.5" />
+                Batch Mode {isBatchMode ? 'On' : 'Off'}
+              </button>
             </div>
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              className="w-full rounded-lg border-gray-300 focus:ring-2 focus:ring-red-500 p-3 border bg-white text-sm"
-            >
-              <option value="">Choose a person...</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
-              ))}
-            </select>
+
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search cadets..."
+                value={userSearchTerm}
+                onChange={(e) => setUserSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-red-500 border-gray-300"
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto border rounded-lg bg-white">
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map(u => (
+                  <div 
+                    key={u.id} 
+                    onClick={() => isBatchMode ? handleUserToggle(u.id) : setSelectedUserIds([u.id])}
+                    className={`p-3 cursor-pointer transition-colors flex items-center justify-between ${
+                      selectedUserIds.includes(u.id)
+                        ? 'bg-red-600 text-white' 
+                        : 'hover:bg-red-50'
+                    }`}
+                  >
+                    <div>
+                      <p className={`font-medium ${selectedUserIds.includes(u.id) ? 'text-white' : 'text-gray-900'}`}>{u.name}</p>
+                      <p className={`text-sm ${selectedUserIds.includes(u.id) ? 'text-red-100' : 'text-gray-500'}`}>{u.email}</p>
+                    </div>
+                    {isBatchMode && (
+                      <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 ${
+                        selectedUserIds.includes(u.id)
+                          ? 'bg-white border-white'
+                          : 'border-gray-300'
+                      }`}>
+                        {selectedUserIds.includes(u.id) && <Check className="h-4 w-4 text-red-600" />}
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500 p-4">No cadets found.</p>
+              )}
+            </div>
           </div>
 
           {/* Selection Summary */}
@@ -116,9 +185,13 @@ export default function NewSignOutPage({
             <h3 className="font-bold text-lg border-b border-gray-700 pb-2">Sign Out Summary</h3>
             <div className="space-y-4">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Cadet:</span>
-                <span className="font-medium">{users.find(u => u.id === selectedUserId)?.name || 'Not selected'}</span>
-              </div>
+                  <span className="text-gray-400">Cadet(s):</span>
+                  <div className="font-medium text-right">
+                    {selectedUserIds.length > 0 
+                      ? selectedUserIds.map(id => users.find(u => u.id === id)?.name).join(', ')
+                      : 'Not selected'}
+                  </div>
+                </div>
               <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
                 {Object.entries(selectedItems).map(([id, qty]) => {
                   const item = items.find(i => i.id === id);
@@ -137,10 +210,12 @@ export default function NewSignOutPage({
             </div>
             <button
               onClick={handleSubmit}
-              disabled={!selectedUserId || Object.keys(selectedItems).length === 0 || isSubmitting}
+              disabled={selectedUserIds.length === 0 || Object.keys(selectedItems).length === 0 || isSubmitting}
               className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold transition-all flex items-center justify-center"
             >
-              {isSubmitting ? 'Creating...' : 'Initiate & Print Sheet'}
+              {isSubmitting 
+                ? (isBatchMode ? 'Creating Transactions...' : 'Creating...')
+                : (isBatchMode ? 'Initiate Batch Sign Out' : 'Initiate & Print Sheet')}
               <ClipboardList className="ml-2 h-5 w-5" />
             </button>
           </div>
@@ -168,7 +243,7 @@ export default function NewSignOutPage({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
               {filteredItems.map(item => {
                 const isSelected = !!selectedItems[item.id];
                 return (

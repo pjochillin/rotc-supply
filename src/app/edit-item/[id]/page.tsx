@@ -26,6 +26,8 @@ export default function EditItemPage({ params }: EditItemPageProps) {
   const [loading, setLoading] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [hasSizes, setHasSizes] = useState(true);
+
   useEffect(() => {
     // Fetch item details on client side for simplicity in this interactive form
     async function fetchItem() {
@@ -34,11 +36,19 @@ export default function EditItemPage({ params }: EditItemPageProps) {
         const data = await response.json();
         setItem(data);
         setBase64Image(data.imageUrl);
-        setSizes(data.sizes.map((s: any) => ({
-          id: s.id,
-          size: s.size,
-          quantity: s.totalQuantity.toString()
-        })));
+
+        if (data.sizes.length === 1 && data.sizes[0].size === 'Standard') {
+          setHasSizes(false);
+          setSizes([{ id: data.sizes[0].id, size: 'Standard', quantity: data.sizes[0].totalQuantity.toString() }]);
+        } else {
+          setHasSizes(true);
+          setSizes(data.sizes.map((s: any) => ({
+            id: s.id,
+            size: s.size,
+            quantity: s.totalQuantity.toString(),
+          })));
+        }
+
         setLoading(false);
       } catch (error) {
         console.error('Failed to fetch item:', error);
@@ -98,7 +108,14 @@ export default function EditItemPage({ params }: EditItemPageProps) {
       <form action={async (formData) => {
         setIsUploading(true);
         if (base64Image) formData.set('imageUrl', base64Image);
-        formData.set('sizes', JSON.stringify(sizes.filter(s => s.size && s.quantity)));
+
+        // If the item doesn't have sizes, we create a single standard size entry.
+        // Otherwise, we filter out any empty size rows before submitting.
+        const sizesToSubmit = hasSizes
+          ? sizes.filter(s => s.size && s.quantity)
+          : [{ ...sizes[0], size: 'Standard' }];
+
+        formData.set('sizes', JSON.stringify(sizesToSubmit));
 
         try {
           await updateItem(id, formData);
@@ -180,46 +197,67 @@ export default function EditItemPage({ params }: EditItemPageProps) {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-semibold text-gray-700">Sizes & Quantities</label>
-                  <button type="button" onClick={addSize} className="text-xs font-bold text-red-700 hover:text-red-800 flex items-center">
-                    <Plus className="h-3 w-3 mr-1" /> Add Size
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      id="has-sizes-checkbox"
+                      type="checkbox" 
+                      checked={!hasSizes} 
+                      onChange={(e) => setHasSizes(!e.target.checked)} 
+                      className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                    />
+                    <label htmlFor="has-sizes-checkbox" className="text-sm text-gray-600">There are no sizes</label>
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  {sizes.map((s) => (
-                    <div key={s.id} className="flex items-center space-x-3">
-                      <input
-                        type="text"
-                        placeholder="Size (e.g. M-R)"
-                        value={s.size}
-                        onChange={(e) => updateSizeField(s.id, 'size', e.target.value)}
-                        className="flex-grow rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
-                        required
-                      />
-                      <input
-                        type="number"
-                        placeholder="Qty"
-                        value={s.quantity}
-                        onChange={(e) => updateSizeField(s.id, 'quantity', e.target.value)}
-                        className="w-24 rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
-                        required
-                        min="0"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => removeSize(s.id)}
-                        className="p-3 text-gray-400 hover:text-red-600"
-                        disabled={sizes.length === 1}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {hasSizes ? (
+                  <div className="space-y-3">
+                    {sizes.map((s) => (
+                      <div key={s.id} className="flex items-center space-x-3">
+                        <input
+                          type="text"
+                          placeholder="Size (e.g. M-R)"
+                          value={s.size}
+                          onChange={(e) => updateSizeField(s.id, 'size', e.target.value)}
+                          className="flex-grow rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
+                        />
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={s.quantity}
+                          onChange={(e) => updateSizeField(s.id, 'quantity', e.target.value)}
+                          className="w-24 rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
+                          min="0"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => removeSize(s.id)}
+                          className="p-3 text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={addSize} className="text-xs font-bold text-red-700 hover:text-red-800 flex items-center">
+                      <Plus className="h-3 w-3 mr-1" /> Add Size
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700">Quantity</label>
+                    <input
+                      type="number"
+                      placeholder="Total Quantity"
+                      value={sizes[0]?.quantity || ''}
+                      onChange={(e) => setSizes([{ ...sizes[0], quantity: e.target.value }])}
+                      className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 sm:text-sm p-3 border"
+                      min="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
             <div className="flex items-center justify-end space-x-4">
-              <Link href="/admin" className="px-6 py-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</Link>
+              <Link href="/" className="px-6 py-3 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">Cancel</Link>
               <button
                 type="submit"
                 disabled={isUploading}

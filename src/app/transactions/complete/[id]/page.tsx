@@ -12,7 +12,7 @@ export default async function CompleteSignOutPage({
   const transaction = await prisma.transaction.findUnique({
     where: { id },
     include: {
-      user: true,
+      recipient: true,
       items: {
         include: {
           item: {

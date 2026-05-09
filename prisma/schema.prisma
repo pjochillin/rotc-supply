@@ -33,17 +33,19 @@ model ItemSize {
 }
 
 model User {
-  id            String        @id @default(cuid())
-  name          String?
-  email         String?       @unique
-  emailVerified DateTime?
-  image         String?
-  role          Role          @default(USER)
-  accounts      Account[]
-  sessions      Session[]
-  transactions  Transaction[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                      String        @id @default(cuid())
+  name                    String?
+  email                   String?       @unique
+  emailVerified           DateTime?
+  image                   String?
+  role                    Role          @default(USER)
+  accounts                Account[]
+  sessions                Session[]
+  receivedTransactions    Transaction[] @relation("ReceivedTransactions")
+  initiatedTransactions   Transaction[] @relation("InitiatedTransactions")
+  completedTransactions   Transaction[] @relation("CompletedTransactions")
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 }
 
 model Account {
@@ -75,8 +77,12 @@ model Session {
 
 model Transaction {
   id           String            @id @default(cuid())
-  userId       String
-  user         User              @relation(fields: [userId], references: [id])
+  recipientId  String
+  recipient    User              @relation("ReceivedTransactions", fields: [recipientId], references: [id])
+  initiatorId  String
+  initiator    User              @relation("InitiatedTransactions", fields: [initiatorId], references: [id])
+  completerId  String?
+  completer    User?             @relation("CompletedTransactions", fields: [completerId], references: [id])
   status       TransactionStatus @default(IN_PROGRESS)
   items        TransactionItem[]
   checkoutDate DateTime          @default(now())

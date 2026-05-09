@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, ArrowLeft, Package, Info, Plus, Trash2 } from 'lucide-react';
 import { completeSignOut } from '@/app/actions';
@@ -28,7 +28,7 @@ interface TransactionItem {
 
 interface Transaction {
   id: string;
-  user: { name: string | null };
+  recipient: { name: string | null };
   items: TransactionItem[];
 }
 
@@ -48,6 +48,33 @@ export default function CompleteSignOutForm({
     });
     return initial;
   });
+
+  const validationErrors = useMemo(() => {
+    const errors: Record<string, Record<number, string | null>> = {};
+    for (const tItem of transaction.items) {
+      errors[tItem.id] = {};
+      const details = itemDetails[tItem.id];
+      for (const [index, detail] of details.entries()) {
+        if (detail.quantity > 0 && detail.itemSizeId) {
+          const size = tItem.item.sizes.find(s => s.id === detail.itemSizeId);
+          if (size && detail.quantity > size.availableQuantity) {
+            errors[tItem.id][index] = `Max: ${size.availableQuantity}`;
+          } else {
+            errors[tItem.id][index] = null;
+          }
+        } else {
+          errors[tItem.id][index] = null;
+        }
+      }
+    }
+    return errors;
+  }, [itemDetails, transaction.items]);
+
+  const hasStockErrors = useMemo(() =>
+    Object.values(validationErrors).some(itemErrors =>
+      Object.values(itemErrors).some(error => error !== null)
+    ),
+  [validationErrors]);
 
   const addSizeRow = (transactionItemId: string) => {
     setItemDetails(prev => ({
@@ -72,10 +99,17 @@ export default function CompleteSignOutForm({
     }));
   };
 
-  const isFormValid = transaction.items.every(tItem => 
-    itemDetails[tItem.id].length > 0 && 
-    itemDetails[tItem.id].every(d => d.itemSizeId && d.quantity > 0)
-  );
+  const isFormValid = useMemo(() => {
+    const hasAtLeastOneItem = Object.values(itemDetails)
+      .flat()
+      .some(d => d.quantity > 0);
+
+    const allRowsHaveSizeIfNotEmpty = transaction.items.every(tItem =>
+      itemDetails[tItem.id].every(d => d.quantity === 0 || (d.quantity > 0 && d.itemSizeId))
+    );
+
+    return hasAtLeastOneItem && allRowsHaveSizeIfNotEmpty && !hasStockErrors;
+  }, [itemDetails, transaction.items, hasStockErrors]);
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
@@ -105,7 +139,7 @@ export default function CompleteSignOutForm({
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Complete Sign Out</h1>
-            <p className="text-gray-500 text-sm">Assigning items for <span className="font-bold text-gray-900">{transaction.user.name}</span></p>
+            <p className="text-gray-500 text-sm">Assigning items for <span className="font-bold text-gray-900">{transaction.recipient.name}</span></p>
           </div>
         </div>
       </div>
@@ -153,7 +187,7 @@ export default function CompleteSignOutForm({
                         <button
                           key={size.id}
                           type="button"
-                          disabled={size.availableQuantity <= 0}
+                          disabled={size.availableQuantity <= 0 || detail.quantity === 0}
                           onClick={() => updateSizeRow(tItem.id, idx, 'itemSizeId', size.id)}
                           className={`flex flex-col items-center justify-center p-2 border-2 rounded-lg transition-all ${
                             detail.itemSizeId === size.id
@@ -174,11 +208,17 @@ export default function CompleteSignOutForm({
                     <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Quantity Given</label>
                     <input
                       type="number"
-                      min="1"
+                      min="0"
                       value={detail.quantity}
-                      onChange={(e) => updateSizeRow(tItem.id, idx, 'quantity', parseInt(e.target.value))}
-                      className="w-full rounded-lg border-gray-200 focus:ring-2 focus:ring-red-500 p-3 border font-bold"
+                      onChange={(e) => {
+                        const value = parseInt(e.target.value);
+                        updateSizeRow(tItem.id, idx, 'quantity', isNaN(value) ? 0 : value);
+                      }}
+                      className={`w-full rounded-lg border-gray-200 focus:ring-2 focus:ring-red-500 p-3 border font-bold ${validationErrors[tItem.id]?.[idx] ? 'border-red-500 text-red-600' : ''}`}
                     />
+                    {validationErrors[tItem.id]?.[idx] && (
+                      <p className="text-red-600 text-xs font-bold mt-1">{validationErrors[tItem.id][idx]}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-1 flex justify-center">

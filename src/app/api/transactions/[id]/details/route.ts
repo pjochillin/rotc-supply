@@ -15,7 +15,9 @@ export async function GET(
   const transaction = await prisma.transaction.findUnique({
     where: { id },
     include: {
-      user: true,
+      recipient: true,
+      initiator: true,
+      completer: true,
       items: {
         include: {
           item: true,

@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Package } from "lucide-react";
 import Link from "next/link";
 import PrintButton from "@/components/PrintButton";
 import LogoFallback from "@/components/LogoFallback";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export default async function PrintUserOCIEPage({ 
   params 
@@ -11,11 +13,12 @@ export default async function PrintUserOCIEPage({
   params: Promise<{ id: string }> 
 }) {
   const { id } = await params;
-  
+  const session = await getServerSession(authOptions);
+
   const user = await prisma.user.findUnique({
     where: { id },
     include: {
-      transactions: {
+      receivedTransactions: {
         where: { status: 'COMPLETED' },
         include: {
           items: {
@@ -36,7 +39,7 @@ export default async function PrintUserOCIEPage({
 
   if (!user) notFound();
 
-  const items = user.transactions.flatMap(t => 
+  const items = user.receivedTransactions.flatMap(t => 
     t.items.flatMap(i => 
       i.details.map(d => ({
         ...i.item,
@@ -48,7 +51,7 @@ export default async function PrintUserOCIEPage({
   );
 
   return (
-    <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0">
+    <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0 print:max-w-none">
       <div className="mb-8 flex items-center justify-between print:hidden">
         <Link href={`/users/${id}`} className="flex items-center text-gray-600 hover:text-gray-900 font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -58,62 +61,56 @@ export default async function PrintUserOCIEPage({
       </div>
 
       <div className="bg-white p-8 border shadow-sm print:shadow-none print:border-none print:p-0 text-black font-serif">
-        <div className="text-center mb-6 border-b-2 border-black pb-4">
-          <div className="flex justify-center mb-4">
-            <LogoFallback className="h-32 w-32" fallbackText="EXCELSIOR<br/>BATTALION" />
-          </div>
-          <h1 className="text-lg font-bold uppercase underline">Individual OCIE Record (Digital DA 3645)</h1>
-          <p className="text-sm font-bold mt-1 uppercase">Complete Equipment Record</p>
-        </div>
-
-        <div className="grid grid-cols-2 border-2 border-black mb-6 text-[10px]">
-          <div className="p-2 border-r-2 border-black space-y-1">
-            <p className="font-bold">Record generated on: <span className="font-normal">{new Date().toLocaleString()}</span></p>
-            <p className="font-bold underline uppercase mt-2">OCIE Record Holder Information:</p>
-            <div className="grid grid-cols-2 mt-1">
+        <div className="grid grid-cols-4 border-2 border-black text-[10px] mb-4">
+          <div className="col-span-3 p-2 border-r-2 border-black">
+            <h1 className="text-base font-bold uppercase underline">Individual OCIE Record (Digital DA 3645)</h1>
+            <div className="grid grid-cols-2 mt-2">
               <p><span className="font-bold">NAME:</span> {user.name}</p>
               <p><span className="font-bold">EMAIL:</span> {user.email}</p>
             </div>
-            <p><span className="font-bold">UNIT:</span> Cornell ROTC</p>
+            <p><span className="font-bold">UNIT:</span> Cornell Army ROTC</p>
+            <p className="font-bold mt-1">OCIE Record generated on: <span className="font-normal">{new Date().toLocaleString()} by {session?.user?.name}</span></p>
           </div>
-          <div className="p-2 space-y-1">
-            <p><span className="font-bold">Items Currently Held:</span> {items.reduce((acc, i) => acc + i.quantity, 0)}</p>
-            <p className="font-bold">Basis of Issue and Authorization:</p>
-            <p>Assigned Cadet Position</p>
+          <div className="col-span-1 flex items-center justify-center">
+            <LogoFallback 
+              className="h-20 w-20"
+              fallbackText="EXCELSIOR<br/>BATTALION" 
+            />
           </div>
         </div>
 
         <table className="w-full border-collapse border-2 border-black text-[10px]">
           <thead>
-            <tr className="bg-gray-100 border-b-2 border-black">
-              <th className="border-r-2 border-black p-2 w-24 uppercase font-black">Picture</th>
-              <th className="border-r-2 border-black p-2 uppercase font-black text-left">Item Description</th>
-              <th className="border-r-2 border-black p-2 w-20 uppercase font-black">Size</th>
-              <th className="border-r-2 border-black p-2 w-20 uppercase font-black">Checkout Date</th>
-              <th className="p-2 w-24 uppercase font-black">Qty Held</th>
+            <tr className="bg-gray-100 border-b-2 border-black text-xs">
+              <th className="border-r-2 border-black p-1 w-12 uppercase font-black">Pic</th>
+              <th className="border-r-2 border-black p-1 uppercase font-black text-left">Item Description</th>
+              <th className="border-r-2 border-black p-1 w-16 uppercase font-black">Size</th>
+              <th className="border-r-2 border-black p-1 w-20 uppercase font-black">Checkout Date</th>
+              <th className="p-1 w-24 uppercase font-black">Qty Held</th>
             </tr>
           </thead>
           <tbody>
             {items.map((item, idx) => (
-              <tr key={idx} className="border-b-2 border-black h-24">
-                <td className="border-r-2 border-black p-1 text-center align-middle">
+              <tr key={idx} className="border-b-2 border-black">
+                <td className="border-r-2 border-black p-0.5 text-center align-middle">
                   {item.imageUrl ? (
-                    <img src={item.imageUrl} alt="" className="h-20 w-20 object-contain mx-auto" />
+                    <img src={item.imageUrl} alt="" className="h-8 w-8 object-contain mx-auto" />
                   ) : (
-                    <div className="h-20 w-20 border border-dashed border-gray-300 flex items-center justify-center mx-auto" />
+                    <div className="h-8 w-8 border border-dashed border-gray-300 flex items-center justify-center mx-auto">
+                      <Package className="h-5 w-5 text-gray-300" />
+                    </div>
                   )}
                 </td>
-                <td className="border-r-2 border-black p-2 align-middle">
-                  <div className="font-bold text-sm uppercase leading-tight">{item.name}</div>
-                  <div className="mt-1 text-[9px] italic">{item.category}</div>
+                <td className="border-r-2 border-black p-1 align-middle">
+                  <div className="font-bold text-[10px] uppercase leading-none">{item.name}</div>
                 </td>
-                <td className="border-r-2 border-black p-2 text-center align-middle font-bold text-sm">
-                  {item.size}
+                <td className="border-r-2 border-black p-1 text-center align-middle font-bold text-[10px]">
+                  {item.size === 'Standard' ? 'N/A' : item.size}
                 </td>
-                <td className="border-r-2 border-black p-2 text-center align-middle">
+                <td className="border-r-2 border-black p-1 text-center align-middle">
                   {item.checkoutDate.toLocaleDateString()}
                 </td>
-                <td className="p-2 text-center align-middle font-black text-lg">
+                <td className="p-1 text-center align-middle font-black text-sm">
                   {item.quantity}
                 </td>
               </tr>
@@ -128,14 +125,16 @@ export default async function PrintUserOCIEPage({
           </tbody>
         </table>
 
-        <div className="mt-12 grid grid-cols-2 gap-24">
-          <div className="text-center">
-            <div className="border-b-2 border-black mb-1 h-8"></div>
-            <p className="text-[9px] font-bold uppercase">Cadet Signature (Verified On {new Date().toLocaleDateString()})</p>
-          </div>
-          <div className="text-center">
-            <div className="border-b-2 border-black mb-1 h-8"></div>
-            <p className="text-[9px] font-bold uppercase">Supply Officer Signature</p>
+        <div className="mt-16 print:break-inside-avoid">
+          <div className="grid grid-cols-2 gap-24">
+            <div className="text-center">
+              <div className="border-b-2 border-black mb-1 h-8"></div>
+              <p className="text-[9px] font-bold uppercase">Cadet Signature (Verified On {new Date().toLocaleDateString()})</p>
+            </div>
+            <div className="text-center">
+              <div className="border-b-2 border-black mb-1 h-8"></div>
+              <p className="text-[9px] font-bold uppercase">Supply Officer Signature</p>
+            </div>
           </div>
         </div>
       </div>

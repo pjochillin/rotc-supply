@@ -1,5 +1,6 @@
 import { History, Calendar, User, Package } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import TransactionDetailModal from "@/components/TransactionDetailModal";
 
 export default async function HistoryPage() {
   // Fetch real data from Prisma
@@ -15,24 +16,41 @@ export default async function HistoryPage() {
           }
         }
       },
-      user: true,
+      recipient: true,
+      initiator: true,
+      completer: true,
     },
     orderBy: { checkoutDate: 'desc' },
   });
 
-  const history = historyData.map(t => ({
-    id: t.id,
-    item: t.items.map(i => {
-      const sizeStr = i.details.length > 0 
-        ? ` (${i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})`
-        : '';
-      return `${i.item.name}${sizeStr}`;
-    }).join(' + '),
-    user: t.user.name,
-    date: t.checkoutDate.toLocaleDateString(),
-    type: t.status === 'COMPLETED' ? 'Checkout' : t.status === 'IN_PROGRESS' ? 'Handout Init' : 'Return',
-    status: t.status === 'IN_PROGRESS' ? 'Active' : 'Completed',
-  }));
+  const history = historyData.map(t => {
+    const isReturn = ['RETURN_IN_PROGRESS', 'RETURNED'].includes(t.status);
+
+    let typeText = '';
+    if (t.status === 'IN_PROGRESS') typeText = 'Handout In Progress';
+    if (t.status === 'COMPLETED') typeText = 'Checkout Completed';
+    if (t.status === 'RETURN_IN_PROGRESS') typeText = 'Return In Progress';
+    if (t.status === 'RETURNED') typeText = 'Return Completed';
+
+    return {
+      id: t.id,
+      items: t.items.map(i => {
+        const sizeStr = i.details.length > 0 
+          ? ` (${i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})`
+          : '';
+        return `${i.item.name}${sizeStr}`;
+      }),
+      recipient: t.recipient.name,
+      initiator: t.initiator.name,
+      completer: t.completer?.name ?? null,
+      date: (isReturn ? t.returnDate : t.checkoutDate)?.toLocaleDateString() ?? 'N/A',
+      type: typeText,
+      status: t.status,
+      isReturn,
+      createdAt: t.createdAt,
+      completedAt: t.completedAt,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -51,34 +69,39 @@ export default async function HistoryPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className={`p-2 rounded-full mr-3 ${
-                      item.type === 'Checkout' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                      item.isReturn ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
                     }`}>
-                      {item.type === 'Checkout' ? <Package className="h-5 w-5" /> : <History className="h-5 w-5" />}
+                      {item.isReturn ? <History className="h-5 w-5" /> : <Package className="h-5 w-5" />}
                     </div>
-                    <p className="truncate text-sm font-medium text-red-700">{item.item}</p>
+                                        <div className="flex flex-wrap gap-x-1 items-center text-sm font-medium">
+                      {item.items.map((itemName, index) => (
+                        <div key={index} className="flex items-center">
+                          <span className="text-red-700">{itemName}</span>
+                          {index < item.items.length - 1 && <span className="text-gray-500 mx-1">+</span>}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="ml-2 flex flex-shrink-0">
+                  <div className="ml-2 flex-shrink-0 flex items-center">
                     <p className={`inline-flex rounded-full px-2 text-xs font-semibold leading-5 ${
-                      item.status === 'Active' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'
+                      item.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' : 
+                      item.status === 'RETURN_IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                      item.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
-                      {item.status}
+                      {item.status.replace(/_/g, ' ')}
                     </p>
+                    <TransactionDetailModal transaction={item} />
                   </div>
                 </div>
                 <div className="mt-2 sm:flex sm:justify-between">
                   <div className="sm:flex">
                     <p className="flex items-center text-sm text-gray-500">
                       <User className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
-                      {item.user}
+                      {item.recipient}
                     </p>
                     <p className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
                       <Calendar className="mr-1.5 h-4 w-4 flex-shrink-0 text-gray-400" aria-hidden="true" />
                       {item.date}
-                    </p>
-                  </div>
-                  <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                    <p>
-                      {item.type}
                     </p>
                   </div>
                 </div>

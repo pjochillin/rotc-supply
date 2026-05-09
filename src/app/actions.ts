@@ -1,5 +1,7 @@
 'use server';
 
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
@@ -12,7 +14,7 @@ export async function createItem(formData: FormData) {
   const imageUrl = formData.get('imageUrl') as string;
   
   const sizesJson = formData.get('sizes') as string;
-  const sizesData = JSON.parse(sizesJson);
+  const sizesData = sizesJson ? JSON.parse(sizesJson) : [];
 
   await prisma.item.create({
     data: {
@@ -24,8 +26,8 @@ export async function createItem(formData: FormData) {
       sizes: {
         create: sizesData.map((s: { size: string; quantity: string }) => ({
           size: s.size,
-          totalQuantity: parseInt(s.quantity),
-          availableQuantity: parseInt(s.quantity),
+          totalQuantity: parseInt(s.quantity, 10) || 0,
+          availableQuantity: parseInt(s.quantity, 10) || 0,
         })),
       },
     },
@@ -41,42 +43,71 @@ export async function updateItem(id: string, formData: FormData) {
   const room = formData.get('room') as string;
   const shelf = formData.get('shelf') as string;
   const imageUrl = formData.get('imageUrl') as string;
-  
+
   const sizesJson = formData.get('sizes') as string;
-  const sizesData = JSON.parse(sizesJson);
+  // If sizes are not provided or the field is empty, default to an empty array.
+  const sizesData = sizesJson ? JSON.parse(sizesJson) : [];
 
   await prisma.$transaction(async (tx) => {
+    // First, update the basic details of the item.
     await tx.item.update({
       where: { id },
       data: { name, category, room, shelf, imageUrl },
     });
 
+    // Get the current sizes of the item from the database.
     const existingSizes = await tx.itemSize.findMany({ where: { itemId: id } });
+    const existingSizeIds = existingSizes.map(s => s.id);
 
+    // Get the IDs of the sizes submitted from the form.
+    // Filter out any new sizes which won't have an ID yet.
+    const submittedSizeIds = sizesData.map((s: any) => s.id).filter(Boolean);
+
+    // Determine which sizes need to be deleted.
+    // These are sizes that exist in the database but not in the form submission.
+    const idsToDelete = existingSizeIds.filter(id => !submittedSizeIds.includes(id));
+    if (idsToDelete.length > 0) {
+      await tx.itemSize.deleteMany({
+        where: {
+          id: { in: idsToDelete },
+        },
+      });
+    }
+
+    // Iterate through the submitted sizes to either create new ones or update existing ones.
     for (const sizeInfo of sizesData) {
-      const existing = existingSizes.find(s => s.size === sizeInfo.size);
-      if (existing) {
-        const diff = parseInt(sizeInfo.quantity) - existing.totalQuantity;
-        await tx.itemSize.update({
-          where: { id: existing.id },
-          data: {
-            totalQuantity: parseInt(sizeInfo.quantity),
-            availableQuantity: Math.max(0, existing.availableQuantity + diff),
-          }
-        });
+      const quantity = parseInt(sizeInfo.quantity);
+
+      if (sizeInfo.id) {
+        // If the size has an ID, it's an existing size that needs to be updated.
+        const existingSize = existingSizes.find(s => s.id === sizeInfo.id);
+        if (existingSize) {
+          const quantityDifference = quantity - existingSize.totalQuantity;
+          await tx.itemSize.update({
+            where: { id: sizeInfo.id },
+            data: {
+              size: sizeInfo.size,
+              totalQuantity: quantity,
+              // Adjust available quantity based on the change in total quantity.
+              availableQuantity: Math.max(0, existingSize.availableQuantity + quantityDifference),
+            },
+          });
+        }
       } else {
+        // If the size has no ID, it's a new size that needs to be created.
         await tx.itemSize.create({
           data: {
             itemId: id,
             size: sizeInfo.size,
-            totalQuantity: parseInt(sizeInfo.quantity),
-            availableQuantity: parseInt(sizeInfo.quantity),
-          }
+            totalQuantity: quantity,
+            availableQuantity: quantity,
+          },
         });
       }
     }
   });
 
+  // Revalidate paths to ensure the UI updates with the new data.
   revalidatePath('/inventory');
   revalidatePath('/');
 }
@@ -100,18 +131,47 @@ export async function createUser(formData: FormData) {
   revalidatePath('/users');
 }
 
+export async function updateUserRole(userId: string, newRole: 'USER' | 'ADMIN') {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.role !== 'ADMIN') {
+    throw new Error('Not authorized to change user roles.');
+  }
+  
+  if (session?.user?.id === userId) {
+    throw new Error('You cannot change your own role.');
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role: newRole },
+  });
+
+  revalidatePath('/users');
+  revalidatePath(`/users/${userId}`);
+}
+
+export async function getUser(id: string) {
+  if (!id) {
+    return null;
+  }
+  return prisma.user.findUnique({
+    where: { id },
+  });
+}
+
 export async function deleteUser(userId: string) {
   await prisma.$transaction(async (tx) => {
     // 1. Get the user's current outstanding OCIE record.
     const ocieItems = await getUserOcie(userId);
 
-    // 2. For each outstanding item, decrement the total quantity in the master supply record.
+    // 2. For each outstanding item, decrement both the total and available quantity in the master supply record.
     for (const item of ocieItems) {
       if (item.quantity > 0) {
         await tx.itemSize.update({
           where: { id: item.itemSizeId },
           data: {
             totalQuantity: { decrement: item.quantity },
+            availableQuantity: { decrement: item.quantity },
           },
         });
       }
@@ -119,7 +179,7 @@ export async function deleteUser(userId: string) {
 
     // 3. Delete all transactions associated with the user.
     await tx.transaction.deleteMany({
-      where: { userId: userId },
+      where: { recipientId: userId },
     });
 
     // 4. Finally, delete the user.
@@ -137,14 +197,33 @@ export async function deleteUser(userId: string) {
 
 // Transaction Actions
 
+export async function getTransaction(id: string) {
+  if (!id) {
+    return null;
+  }
+  return prisma.transaction.findUnique({
+    where: { id },
+    include: {
+      recipient: true,
+    }
+  });
+}
+
 /**
  * Stage 1: Initiate a sign-out (IN_PROGRESS)
  * Admin picks a user and multiple items with authorized quantities.
  */
-export async function initiateSignOut(userId: string, items: { itemId: string; authQuantity: number }[]) {
+export async function initiateSignOut(recipientId: string, items: { itemId: string; authQuantity: number }[]) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new Error("User is not authenticated");
+  }
+  const initiatorId = session.user.id;
+
   const transaction = await prisma.transaction.create({
     data: {
-      userId,
+      recipientId,
+      initiatorId,
       status: 'IN_PROGRESS',
       items: {
         create: items.map(item => ({
@@ -160,6 +239,85 @@ export async function initiateSignOut(userId: string, items: { itemId: string; a
   return transaction.id;
 }
 
+export async function getOrCreateReturnTransaction(recipientId: string) {
+  const ocie = await getUserOcie(recipientId);
+  if (ocie.length === 0) {
+    throw new Error("User has no items to return.");
+  }
+
+  const existingReturn = await prisma.transaction.findFirst({
+    where: {
+      recipientId,
+      status: 'RETURN_IN_PROGRESS',
+    },
+  });
+
+  if (existingReturn) {
+    return existingReturn.id;
+  }
+
+  return initiateReturn(recipientId);
+}
+
+export async function initiateBatchSignOut(recipientIds: string[], items: { itemId: string; authQuantity: number }[]) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new Error("User is not authenticated");
+  }
+  const initiatorId = session.user.id;
+
+  for (const recipientId of recipientIds) {
+    await prisma.transaction.create({
+      data: {
+        recipientId,
+        initiatorId,
+        status: 'IN_PROGRESS',
+        items: {
+          create: items.map(item => ({
+            itemId: item.itemId,
+            authQuantity: item.authQuantity,
+          })),
+        },
+      },
+    });
+  }
+
+  revalidatePath('/history');
+  revalidatePath('/');
+}
+
+export async function initiateReturnProcess(transactionId: string) {
+  await prisma.transaction.update({
+    where: { id: transactionId },
+    data: { status: 'RETURN_IN_PROGRESS' },
+  });
+
+  revalidatePath('/');
+  revalidatePath('/history');
+}
+
+export async function wipeAllTransactions() {
+  await prisma.$transaction(async (tx) => {
+    // Delete all transaction-related records
+    await tx.transactionItemDetail.deleteMany({});
+    await tx.transactionItem.deleteMany({});
+    await tx.transaction.deleteMany({});
+
+    // Reset all item quantities
+    const itemSizes = await tx.itemSize.findMany({});
+    for (const itemSize of itemSizes) {
+      await tx.itemSize.update({
+        where: { id: itemSize.id },
+        data: { availableQuantity: itemSize.totalQuantity },
+      });
+    }
+  });
+
+  revalidatePath('/');
+  revalidatePath('/history');
+  revalidatePath('/inventory');
+}
+
 /**
  * Stage 2: Complete a sign-out (COMPLETED)
  * Admin inputs actual sizes and quantities given. Stock is deducted.
@@ -171,10 +329,19 @@ export async function completeSignOut(
     details: { itemSizeId: string; quantity: number }[] 
   }[]
 ) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new Error("User is not authenticated");
+  }
+  const completerId = session.user.id;
+
   await prisma.$transaction(async (tx) => {
     for (const item of itemsData) {
+      // Filter out details with a quantity of 0
+      const validDetails = item.details.filter(d => d.quantity > 0);
+
       // 1. Create multiple size details for this transaction item
-      for (const detail of item.details) {
+      for (const detail of validDetails) {
         const itemSize = await tx.itemSize.findUnique({ where: { id: detail.itemSizeId } });
         if (!itemSize || itemSize.availableQuantity < detail.quantity) {
           throw new Error(`Not enough stock for size ${itemSize?.size}`);
@@ -204,6 +371,7 @@ export async function completeSignOut(
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
+        completerId,
       },
     });
   });
@@ -214,18 +382,24 @@ export async function completeSignOut(
 }
 
 export async function initiateReturn(
-  userId: string, 
+  recipientId: string, 
   itemsToReturn: { 
     itemId: string;
     itemSizeId: string; 
     quantity: number; 
   }[] = []
 ) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new Error("User is not authenticated");
+  }
+  const initiatorId = session.user.id;
+
   const transaction = await prisma.transaction.create({
     data: {
-      userId,
-      status: 'RETURNED',
-      returnDate: new Date(),
+      recipientId,
+      initiatorId,
+      status: 'RETURN_IN_PROGRESS',
       items: {
         create: (itemsToReturn || []).map(item => ({
           itemId: item.itemId,
@@ -241,22 +415,50 @@ export async function initiateReturn(
     },
   });
 
-  await prisma.$transaction(async (tx) => {
-    for (const item of itemsToReturn || []) {
-      if (item.quantity <= 0) continue;
+  return transaction.id;
+}
 
-      await tx.itemSize.update({
-        where: { id: item.itemSizeId },
-        data: {
-          availableQuantity: { increment: item.quantity },
-        },
-      });
+export async function confirmReturn(transactionId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    throw new Error("User is not authenticated");
+  }
+  const completerId = session.user.id;
+
+  const transaction = await prisma.transaction.update({
+    where: { id: transactionId },
+    data: {
+      status: 'RETURNED',
+      returnDate: new Date(),
+      completerId,
+    },
+    include: {
+      items: {
+        include: {
+          details: true
+        }
+      }
     }
   });
 
+  await prisma.$transaction(async (tx) => {
+    for (const item of transaction.items) {
+      for (const detail of item.details) {
+        if (detail.quantity > 0) {
+          await tx.itemSize.update({
+            where: { id: detail.itemSizeId },
+            data: {
+              availableQuantity: { increment: detail.quantity },
+            },
+          });
+        }
+      }
+    }
+  });
 
-
-  return transaction.id;
+  revalidatePath('/');
+  revalidatePath('/history');
+  revalidatePath(`/users/${transaction.recipientId}`);
 }
 
 export async function deleteTransaction(id: string) {
@@ -276,7 +478,7 @@ export async function getUserOcie(userId: string) {
     where: {
       transactionItem: {
         transaction: {
-          userId: userId,
+          recipientId: userId,
           status: 'COMPLETED',
         },
       },
@@ -292,7 +494,7 @@ export async function getUserOcie(userId: string) {
     where: {
       transactionItem: {
         transaction: {
-          userId: userId,
+          recipientId: userId,
           status: 'RETURNED',
         },
       },
@@ -343,6 +545,7 @@ export async function getUserOcie(userId: string) {
       name: detail.item.name,
       size: detail.size,
       quantity: ocieItem?.netQuantity || 0,
+      imageUrl: detail.item.imageUrl,
     };
   }).sort((a, b) => a.name.localeCompare(b.name) || a.size.localeCompare(b.size));
 
@@ -389,16 +592,23 @@ export async function completeReturn(
       });
     }
 
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      throw new Error("User is not authenticated");
+    }
+    const completerId = session.user.id;
+
     // 4. Mark the overall transaction as RETURNED
     const transaction = await tx.transaction.update({
       where: { id: transactionId },
       data: {
         status: 'RETURNED',
         returnDate: new Date(),
+        completerId,
       },
     });
 
-    revalidatePath(`/users/${transaction.userId}`);
+    revalidatePath(`/users/${transaction.recipientId}`);
   });
 
   revalidatePath('/inventory');

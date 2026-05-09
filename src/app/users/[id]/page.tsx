@@ -1,21 +1,24 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { User, Package, History, ArrowLeft, Clock, CheckCircle2, Printer, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { DeleteUserButton } from '@/components/DeleteUserButton';
+import TransactionDetailModal from '@/components/TransactionDetailModal';
+import ToggleRoleButton from '@/components/ToggleRoleButton';
 
-export default async function UserDetailPage({ 
-  params 
-}: { 
-  params: Promise<{ id: string }> 
-}) {
+export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const session = await getServerSession(authOptions);
   
   const user = await prisma.user.findUnique({
     where: { id },
     include: {
-      transactions: {
+      receivedTransactions: {
         include: {
+          initiator: true,
+          completer: true,
           items: {
             include: {
               item: true,
@@ -37,7 +40,7 @@ export default async function UserDetailPage({
   const itemMap = new Map<string, { name: string; size: string; quantity: number; imageUrl: string | null; }>();
 
   // Process COMPLETED transactions to add items
-  user.transactions
+  user.receivedTransactions
     .filter(t => t.status === 'COMPLETED')
     .flatMap(t => t.items)
     .flatMap(i => i.details.map(d => ({
@@ -57,7 +60,7 @@ export default async function UserDetailPage({
     });
 
   // Process RETURNED transactions to subtract items
-  user.transactions
+  user.receivedTransactions
     .filter(t => t.status === 'RETURNED')
     .flatMap(t => t.items)
     .flatMap(i => i.details.map(d => ({
@@ -79,7 +82,7 @@ export default async function UserDetailPage({
     <div className="max-w-6xl mx-auto pb-12">
       <div className="mb-8 flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Link href="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
+          <Link href="/users" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <div>
@@ -88,22 +91,33 @@ export default async function UserDetailPage({
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          <Link
-            href={`/users/${id}/print-ocie`}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all"
-          >
-            <Printer className="mr-2 h-4 w-4 text-red-700" />
-            Print OCIE Record
-          </Link>
-          <Link
-            href={`/transactions/return/new?userId=${id}`}
-            className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-red-700 hover:bg-red-800 transition-all"
-          >
-            <RotateCcw className="mr-2 h-4 w-4" />
-            Process Return
-          </Link>
-          <DeleteUserButton userId={id} />
-        </div>
+            <Link
+              href={`/users/${id}/print-ocie`}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all"
+            >
+              <Printer className="mr-2 h-4 w-4 text-red-700" />
+              Print OCIE Record
+            </Link>
+            <ToggleRoleButton userId={user.id} currentRole={user.role} currentUserId={session?.user?.id} />
+            {currentlySignedOut.length > 0 ? (
+              <Link
+                href={`/transactions/return/new?userId=${id}`}
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-red-700 hover:bg-red-800 transition-all"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Process Return
+              </Link>
+            ) : (
+              <button
+                disabled
+                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-gray-400 cursor-not-allowed"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                Process Return
+              </button>
+            )}
+            <DeleteUserButton userId={id} />
+          </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -144,6 +158,7 @@ export default async function UserDetailPage({
 
         {/* Right Column: Transaction History */}
         <div className="lg:col-span-2 space-y-6">
+
           <div className="bg-white shadow-sm rounded-2xl overflow-hidden border border-gray-200">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center">
               <History className="h-5 w-5 text-gray-900 mr-2" />
@@ -159,7 +174,7 @@ export default async function UserDetailPage({
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {user.transactions.map((t) => (
+                  {user.receivedTransactions.map((t) => (
                     <tr key={t.id}>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {t.checkoutDate.toLocaleDateString()}
@@ -171,7 +186,7 @@ export default async function UserDetailPage({
                               {i.item.name}
                               {i.details.length > 0 && (
                                 <span className="text-red-700 ml-1">
-                                  ({i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})
+                                  ({i.details.map(d => d.itemSize.size === 'Standard' ? `x${d.quantity}` : `${d.itemSize.size} x${d.quantity}`).join(', ')})
                                 </span>
                               )}
                             </div>
@@ -179,12 +194,33 @@ export default async function UserDetailPage({
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <span className={`inline-block text-[8px] font-black uppercase px-2 py-1 rounded-full ${
-                          t.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' : 
-                          t.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {t.status.replace('_', ' ')}
-                        </span>
+                        <div className="flex items-center justify-end">
+                          <span className={`inline-block text-[8px] font-black uppercase px-2 py-1 rounded-full ${
+                            t.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' : 
+                            t.status === 'RETURN_IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                            t.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {t.status.replace(/_/g, ' ')}
+                          </span>
+                          <TransactionDetailModal transaction={{
+                            id: t.id,
+                            items: t.items.map(i => {
+                              const sizeStr = i.details.length > 0 
+                                ? ` (${i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})`
+                                : '';
+                              return `${i.item.name}${sizeStr}`;
+                            }),
+                            recipient: user.name,
+                            initiator: t.initiator.name,
+                            completer: t.completer?.name ?? null,
+                            date: t.checkoutDate.toLocaleDateString(),
+                            type: t.status.includes('RETURN') ? 'Return' : 'Issue',
+                            status: t.status,
+                            isReturn: t.status.includes('RETURN'),
+                            createdAt: t.createdAt,
+                            completedAt: t.completedAt,
+                          }} />
+                        </div>
                       </td>
                     </tr>
                   ))}

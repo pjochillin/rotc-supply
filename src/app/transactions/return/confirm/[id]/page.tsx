@@ -1,21 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
-import { completeReturn, getUserOcie } from '@/app/actions';
+import { completeReturn, getUserOcie, getUser, getTransaction } from '@/app/actions';
 
-
-export default function ConfirmReturnPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
   const router = useRouter();
-  const { id: transactionId } = React.use(params);
-  
+
   const [user, setUser] = useState<any>(null);
   const [ocieRecord, setOcieRecord] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,19 +18,25 @@ export default function ConfirmReturnPage({
 
   useEffect(() => {
     async function fetchData() {
-      if (!transactionId) return;
+      if (!transactionId) {
+        setLoading(false);
+        return;
+      }
       try {
-        // First, fetch the transaction to get the userId
-        const transResponse = await fetch(`/api/transactions/${transactionId}/basic`);
-        if (!transResponse.ok) throw new Error('Transaction not found');
-        const transactionData = await transResponse.json();
-        setUser(transactionData.user);
+        const transaction = await getTransaction(transactionId);
+        if (!transaction) throw new Error('Transaction not found');
+        const userId = transaction.recipientId;
 
-        // Then, fetch the full OCIE record for that user
-        const ocieData = await getUserOcie(transactionData.userId);
+        const [userData, ocieData] = await Promise.all([
+          getUser(userId),
+          getUserOcie(userId),
+        ]);
+
+        if (!userData) throw new Error('Could not load user data');
+
+        setUser(userData);
         setOcieRecord(ocieData);
 
-        // Initialize all quantities to 0
         const initialQuantities: { [key: string]: number } = {};
         ocieData.forEach((item: any) => {
           initialQuantities[item.itemSizeId] = 0;
@@ -45,7 +45,7 @@ export default function ConfirmReturnPage({
 
       } catch (error) {
         console.error('Failed to load return data:', error);
-        alert('Failed to load return data.');
+        alert((error as Error).message);
       } finally {
         setLoading(false);
       }
@@ -162,5 +162,15 @@ export default function ConfirmReturnPage({
         </div>
       </form>
     </div>
+  );
+}
+
+export default function ConfirmReturnPage({ params }: { params: Promise<{ id: string }> }) {
+  const resolvedParams = React.use(params);
+
+  return (
+    <Suspense fallback={<div className="text-center p-8">Loading OCIE Record...</div>}>
+      <ConfirmReturnForm transactionId={resolvedParams.id} />
+    </Suspense>
   );
 }

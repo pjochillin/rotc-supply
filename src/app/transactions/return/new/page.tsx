@@ -1,21 +1,10 @@
-import { redirect } from 'next/navigation';
-import { initiateReturn } from '@/app/actions';
-import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
+import ReturnProcessor from '@/components/ReturnProcessor';
 
-export default async function NewReturnPage({ 
-  searchParams 
-}: { 
-  searchParams: Promise<{ userId: string }> 
-}) {
-  const { userId } = await searchParams;
-  
-  if (!userId) {
-    notFound();
-  }
-
-  // Directly initiate the return without needing item details
-  const transactionId = await initiateReturn(userId);
-
-  // Redirect to the new confirmation page
-  redirect(`/transactions/return/confirm/${transactionId}`);
+export default function NewReturnPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ReturnProcessor />
+    </Suspense>
+  );
 }

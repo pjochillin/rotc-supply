@@ -8,7 +8,11 @@ export async function GET(
   const { id } = await params;
   const transaction = await prisma.transaction.findUnique({
     where: { id },
-    include: { user: true },
+    include: { 
+      recipient: true,
+      initiator: true,
+      completer: true
+    },
   });
   if (!transaction) {
     return NextResponse.json({ message: 'Transaction not found' }, { status: 404 });

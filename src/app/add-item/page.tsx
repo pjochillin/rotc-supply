@@ -16,6 +16,7 @@ export default function AddItemPage() {
   const router = useRouter();
   const [base64Image, setBase64Image] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [hasSizes, setHasSizes] = useState(true);
   const [sizes, setSizes] = useState<SizeEntry[]>([
     { id: Math.random().toString(), size: '', quantity: '' }
   ]);
@@ -63,8 +64,13 @@ export default function AddItemPage() {
         setIsUploading(true);
         if (base64Image) formData.set('imageUrl', base64Image);
         
-        // Add sizes as JSON string
-        formData.set('sizes', JSON.stringify(sizes.filter(s => s.size && s.quantity)));
+        // If the item doesn't have sizes, we create a single standard size entry.
+        // Otherwise, we filter out any empty size rows before submitting.
+        const sizesToSubmit = hasSizes
+          ? sizes.filter(s => s.size && s.quantity)
+          : [{ size: 'Standard', quantity: sizes[0]?.quantity || '0' }];
+
+        formData.set('sizes', JSON.stringify(sizesToSubmit));
 
         try {
           await createItem(formData);
@@ -135,42 +141,68 @@ export default function AddItemPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-semibold text-gray-700">Sizes & Quantities</label>
-                  <button type="button" onClick={addSize} className="text-xs font-bold text-red-700 hover:text-red-800 flex items-center">
-                    <Plus className="h-3 w-3 mr-1" /> Add Size
-                  </button>
+                  <label className="block text-sm font-semibold text-gray-700">Quantity & Sizes</label>
+                  <div className="flex items-center space-x-2">
+                    <input 
+                      id="has-sizes-checkbox"
+                      type="checkbox" 
+                      checked={!hasSizes} 
+                      onChange={(e) => setHasSizes(!e.target.checked)} 
+                      className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-600"
+                    />
+                    <label htmlFor="has-sizes-checkbox" className="text-sm text-gray-600">This item does not have sizes</label>
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  {sizes.map((s) => (
-                    <div key={s.id} className="flex items-center space-x-3">
-                      <input
-                        type="text"
-                        placeholder="Size (e.g. M-R)"
-                        value={s.size}
-                        onChange={(e) => updateSize(s.id, 'size', e.target.value)}
-                        className="flex-grow rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
-                        required
-                      />
-                      <input
-                        type="number"
-                        placeholder="Qty"
-                        value={s.quantity}
-                        onChange={(e) => updateSize(s.id, 'quantity', e.target.value)}
-                        className="w-24 rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
-                        required
-                        min="0"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => removeSize(s.id)}
-                        className="p-3 text-gray-400 hover:text-red-600"
-                        disabled={sizes.length === 1}
-                      >
-                        <Trash2 className="h-5 w-5" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                {hasSizes ? (
+                  <div className="space-y-3">
+                    {sizes.map((s) => (
+                      <div key={s.id} className="flex items-center space-x-3">
+                        <input
+                          type="text"
+                          placeholder="Size (e.g. M-R)"
+                          value={s.size}
+                          onChange={(e) => updateSize(s.id, 'size', e.target.value)}
+                          className="flex-grow rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
+                          required
+                        />
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={s.quantity}
+                          onChange={(e) => updateSize(s.id, 'quantity', e.target.value)}
+                          className="w-24 rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
+                          required
+                          min="0"
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => removeSize(s.id)}
+                          className="p-3 text-gray-400 hover:text-red-600"
+                          disabled={sizes.length === 1}
+                        >
+                          <Trash2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button type="button" onClick={addSize} className="text-xs font-bold text-red-700 hover:text-red-800 flex items-center">
+                      <Plus className="h-3 w-3 mr-1" /> Add Size
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="quantity" className="block text-sm font-semibold text-gray-700">Quantity</label>
+                    <input
+                      type="number"
+                      id="quantity"
+                      placeholder="Total Quantity"
+                      value={sizes[0]?.quantity || ''}
+                      onChange={(e) => setSizes([{ ...sizes[0], size: 'Standard', quantity: e.target.value }])}
+                      className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 sm:text-sm p-3 border"
+                      required
+                      min="0"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
