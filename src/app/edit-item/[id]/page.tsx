@@ -96,7 +96,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Link href="/inventory" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
@@ -127,7 +127,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
         }
       }} className="space-y-8">
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
               <label className="block text-sm font-semibold text-gray-700 mb-4">Item Image</label>
@@ -173,7 +173,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="category" className="block text-sm font-semibold text-gray-700">Category</label>
                   <select 
@@ -211,7 +211,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
                 {hasSizes ? (
                   <div className="space-y-3">
                     {sizes.map((s) => (
-                      <div key={s.id} className="flex items-center space-x-3">
+                      <div key={s.id} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                         <input
                           type="text"
                           placeholder="Size (e.g. M-R)"

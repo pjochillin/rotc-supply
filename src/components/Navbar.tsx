@@ -29,7 +29,7 @@ export default function Navbar() {
                   />
                 )}
               </div>
-              <span className="text-xl font-black text-red-700 tracking-tighter uppercase">Cornell ROTC Supply</span>
+              <span className="hidden sm:inline text-xl font-black text-red-700 tracking-tighter uppercase">Cornell ROTC Supply</span>
             </Link>
             <div className="hidden lg:ml-6 lg:flex lg:space-x-8">
               <Link

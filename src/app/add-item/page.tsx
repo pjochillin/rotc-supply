@@ -156,7 +156,7 @@ export default function AddItemPage() {
                 {hasSizes ? (
                   <div className="space-y-3">
                     {sizes.map((s) => (
-                      <div key={s.id} className="flex items-center space-x-3">
+                      <div key={s.id} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
                         <input
                           type="text"
                           placeholder="Size (e.g. M-R)"

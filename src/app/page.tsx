@@ -57,7 +57,7 @@ export default async function Home() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Supply Dashboard</h1>
           <p className="mt-2 text-sm text-gray-600">

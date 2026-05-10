@@ -58,7 +58,7 @@ export default function InventoryList({ items }: InventoryListProps) {
 
 
   return (
-    <div className="space-y-6 min-w-[375px]">
+    <div className="space-y-6">
       <div className="md:flex md:items-center md:justify-between">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
@@ -68,7 +68,7 @@ export default function InventoryList({ items }: InventoryListProps) {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
+      <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-grow">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Search className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -139,7 +139,7 @@ export default function InventoryList({ items }: InventoryListProps) {
           </AnimatePresence>
         </div>
         <Link
-          href="/inventory/new"
+          href="/add-item"
           className="inline-flex items-center justify-center rounded-md bg-red-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 md:w-auto w-full"
           >
           <Plus className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
@@ -148,8 +148,15 @@ export default function InventoryList({ items }: InventoryListProps) {
       </div>
 
       <div>
-        <div className="hidden sm:block overflow-x-auto shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
-          <table className="min-w-full divide-y divide-gray-300">
+        <div className="hidden sm:block shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-300 table-fixed">
+            <colgroup>
+              <col className="w-2/5" />
+              <col className="w-1/5" />
+              <col className="w-1/5" />
+              <col className="w-1/5" />
+              <col className="w-24" />
+            </colgroup>
             <thead className="bg-gray-50">
               <tr>
                 <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Item Name</th>
@@ -204,7 +211,7 @@ export default function InventoryList({ items }: InventoryListProps) {
                     <div className="font-medium text-gray-700">Shelf: {item.shelf || '-'}</div>
                   </td>
                   <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
-                    <Link href={`/inventory/edit/${item.id}`} className="text-red-700 hover:text-red-900 font-medium">Edit</Link>
+                    <Link href={`/edit-item/${item.id}`} className="text-red-700 hover:text-red-900 font-medium">Edit</Link>
                   </td>
                 </tr>
               ))}
@@ -227,12 +234,12 @@ export default function InventoryList({ items }: InventoryListProps) {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-bold text-gray-900 truncate">{item.name}</p>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="flex-grow">
+                        <p className="font-bold text-gray-900">{item.name}</p>
                         <p className="text-sm text-gray-500">{item.category}</p>
                       </div>
-                      <Link href={`/inventory/edit/${item.id}`} className="text-red-700 hover:text-red-900 font-medium ml-4 flex-shrink-0">Edit</Link>
+                      <Link href={`/edit-item/${item.id}`} className="text-red-700 hover:text-red-900 font-medium">Edit</Link>
                     </div>
                     <div className="mt-2 flex flex-col space-y-2">
                       <div className="flex flex-col">
