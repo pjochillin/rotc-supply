@@ -83,8 +83,8 @@ export const authOptions: NextAuthOptions = {
 
 
 
-      if (!dbUser) {
-        console.log(`[AUTH] Denying sign-in for unapproved user: ${user.email}`);
+      if (!dbUser || !account) {
+        console.log(`[AUTH] Denying sign-in for unapproved user or missing account information: ${user.email}`);
         return false;
       }
 
