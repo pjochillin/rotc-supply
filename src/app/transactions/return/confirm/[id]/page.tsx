@@ -18,7 +18,7 @@ function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
 
   useEffect(() => {
     async function fetchData() {
-      if (!transactionId) {
+      if (!transactionId || ocieRecord.length > 0) {
         setLoading(false);
         return;
       }
@@ -105,7 +105,7 @@ function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-        <div className="flex justify-between items-center">
+        <div className="hidden md:flex justify-between items-center">
           <p className="text-lg font-bold text-gray-800">Cadet: {user.name}</p>
           <Link
             href={`/transactions/${transactionId}/print-return`}
@@ -115,9 +115,52 @@ function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
             Print Return Form
           </Link>
         </div>
+        <div className="md:hidden">
+            <p className="text-lg font-bold text-gray-800">Cadet: {user.name}</p>
+            <Link
+                href={`/transactions/${transactionId}/print-return`}
+                target="_blank"
+                className="mt-2 block w-full text-center px-4 py-2 rounded-lg border border-blue-600 bg-white text-sm font-semibold text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+                Print Return Form
+            </Link>
+        </div>
         <p className="text-sm text-gray-600">Enter the quantity of each item being returned. All other items will remain on the cadet's record.</p>
 
-        <div className="overflow-x-auto">
+        {/* Mobile View */}
+        <div className="space-y-4 md:hidden">
+          {ocieRecord.map((item) => (
+            <div key={`${item.itemSizeId}-mobile`} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center">
+                <div className="font-medium text-gray-900">
+                  {item.name}
+                  {item.size !== 'Standard' && <span className="text-gray-500"> - {item.size}</span>}
+                </div>
+                <div className="flex items-center space-x-4 mt-2 sm:mt-0">
+                  <div className="text-center">
+                    <div className="text-xs text-gray-500 uppercase font-bold">Issued</div>
+                    <div className="text-sm font-bold text-gray-800">{item.quantity}</div>
+                  </div>
+                  <div className="flex items-center space-x-2 rounded-lg bg-gray-50 p-2">
+                    <label htmlFor={`quantity-${item.itemSizeId}-mobile`} className="text-xs text-gray-500 uppercase font-bold">Returning</label>
+                    <input
+                      type="number"
+                      id={`quantity-${item.itemSizeId}-mobile`}
+                      min="0"
+                      max={item.quantity}
+                      value={quantities[item.itemSizeId] || 0}
+                      onChange={(e) => handleQuantityChange(item.itemSizeId, e.target.value)}
+                      className="w-20 text-center rounded-md border-gray-300 shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
@@ -129,13 +172,14 @@ function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {ocieRecord.map((item) => (
-                <tr key={item.itemSizeId}>
+                <tr key={`${item.itemSizeId}-desktop`}>
                   <td className="px-3 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{item.name}</td>
                   <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-500">{item.size}</td>
                   <td className="px-3 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-800">{item.quantity}</td>
                   <td className="px-3 py-3 whitespace-nowrap text-center text-sm text-gray-500 bg-gray-50">
                     <input
                       type="number"
+                      id={`quantity-${item.itemSizeId}-desktop`}
                       min="0"
                       max={item.quantity}
                       value={quantities[item.itemSizeId] || 0}
@@ -149,7 +193,7 @@ function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
           </table>
         </div>
 
-        <div className="flex justify-end space-x-4 mt-6">
+        <div className="flex justify-end items-center space-x-4 mt-6">
           <Link href={`/users/${user.id}`} className="px-6 py-3 rounded-lg border border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors">Cancel</Link>
           <button
             type="submit"

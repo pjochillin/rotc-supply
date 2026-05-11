@@ -145,11 +145,8 @@ export default function NewReturnPage({
                         </div>
                       )}
                       <div className="flex-grow">
-                        <h4 className="font-bold text-gray-900 text-sm">{item.name}</h4>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-[10px] font-black bg-white border px-1.5 py-0.5 rounded text-gray-500 uppercase">{item.size}</span>
-                          <span className="text-[10px] text-gray-400 font-bold uppercase">Max Qty: {item.quantity}</span>
-                        </div>
+                        <h4 className="font-bold text-gray-900 text-sm">{item.name} - <span className="text-gray-500">{item.size}</span></h4>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">Max Qty: {item.quantity}</p>
                       </div>
                       {isSelected && (
                         <div className="bg-red-600 rounded-full p-1">

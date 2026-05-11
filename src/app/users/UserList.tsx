@@ -47,14 +47,10 @@ export default async function UserList() {
         }
       });
 
-    // Filter out items with zero or negative quantity and sum the rest
-    const totalItems = Array.from(itemMap.values()).reduce((acc, item) => acc + (item.quantity > 0 ? item.quantity : 0), 0);
+    const totalItems = Array.from(itemMap.values()).reduce((acc, item) => acc + item.quantity, 0);
 
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
+      ...user,
       items: totalItems,
     };
   });

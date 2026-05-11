@@ -4,6 +4,8 @@ import { deleteItem } from "@/app/actions";
 import Link from "next/link";
 import DeleteTransactionButton from "@/components/DeleteTransactionButton";
 import DeleteItemButton from "@/components/DeleteItemButton";
+import DashboardInventoryList from "@/components/DashboardInventoryList";
+import DashboardUserList from "@/components/DashboardUserList";
 
 export default async function Home() {
   const [items, users, inProgressTransactions, totalItemsCount, activeTransactionsCount, usersCount, recentTransactionsData] = await Promise.all([
@@ -16,8 +18,6 @@ export default async function Home() {
       where: { status: { in: ['IN_PROGRESS', 'RETURN_IN_PROGRESS'] } },
       include: { 
         recipient: true,
-        initiator: true,
-        completer: true,
         items: { include: { item: true } }
       },
       orderBy: { createdAt: 'desc' }
@@ -33,8 +33,6 @@ export default async function Home() {
           include: { item: true }
         }, 
         recipient: true,
-        initiator: true,
-        completer: true,
       },
     }),
   ]);
@@ -48,9 +46,9 @@ export default async function Home() {
   const recentTransactions = recentTransactionsData.map(t => ({
     id: t.id,
     item: t.items.length > 0 ? `${t.items[0].item.name}${t.items.length > 1 ? ` +${t.items.length - 1} more` : ''}` : 'No items',
-    recipient: t.recipient.name,
-    initiator: t.initiator.name,
-    completer: t.completer?.name,
+    recipient: t.recipient?.name ?? t.recipientName,
+    initiator: t.initiatorName,
+    completer: t.completerName,
     date: t.checkoutDate.toLocaleDateString(),
     status: t.status,
   }));
@@ -114,25 +112,70 @@ export default async function Home() {
                   <p className="italic text-sm">No active transactions in progress.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 table-fixed">
-                    <thead className="bg-gray-50/50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest w-1/4">Cadet</th>
-                        <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Items</th>
-                        <th className="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-widest w-48">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
+                <div>
+                  {/* Desktop Table View */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 table-fixed">
+                      <thead className="bg-gray-50/50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest w-1/4">Cadet</th>
+                          <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Items</th>
+                          <th className="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-widest w-48">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {inProgressTransactions.map((t) => (
+                          <tr key={t.id} className="hover:bg-red-50/30 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-sm font-bold text-gray-900">{t.recipient.name}</div>
+                              <div className="text-[10px] font-bold text-gray-400 uppercase">
+                                {t.status === 'IN_PROGRESS' ? 'Issue' : 'Return'} by {t.initiatorName} • {t.checkoutDate.toLocaleDateString()}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-wrap gap-1">
+                                {t.items.map(i => (
+                                  <span key={i.id} className="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded-full font-bold text-gray-600">
+                                    {i.item.name} <span className="text-red-700 ml-1">x{i.authQuantity}</span>
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <div className="flex justify-start sm:justify-end items-center space-x-3">
+                                <Link 
+                                  href={t.status === 'IN_PROGRESS' ? `/transactions/${t.id}/print` : `/transactions/${t.id}/print-return`} 
+                                  className="text-gray-500 hover:text-gray-900"
+                                >
+                                  <Printer className="h-4 w-4" />
+                                </Link>
+                                <Link 
+                                  href={t.status === 'IN_PROGRESS' ? `/transactions/complete/${t.id}` : `/transactions/return/confirm/${t.id}`} 
+                                  className="text-green-600 hover:text-green-800"
+                                >
+                                  <CheckCircle2 className="h-4 w-4" />
+                                </Link>
+                                <DeleteTransactionButton transactionId={t.id} />
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Card View */}
+                  <div className="sm:hidden">
+                    <ul role="list" className="divide-y divide-gray-200">
                       {inProgressTransactions.map((t) => (
-                        <tr key={t.id} className="hover:bg-red-50/30 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-bold text-gray-900">{t.recipient.name}</div>
-                            <div className="text-[10px] font-bold text-gray-400 uppercase">
-                              {t.status === 'IN_PROGRESS' ? 'Issue' : 'Return'} by {t.initiator.name} • {t.checkoutDate.toLocaleDateString()}
+                        <li key={t.id} className="p-4">
+                          <div className="flex flex-col gap-2">
+                            <div>
+                              <div className="text-sm font-bold text-gray-900">{t.recipient.name}</div>
+                              <div className="text-[10px] font-bold text-gray-400 uppercase">
+                                {t.status === 'IN_PROGRESS' ? 'Issue' : 'Return'} by {t.initiatorName} • {t.checkoutDate.toLocaleDateString()}
+                              </div>
                             </div>
-                          </td>
-                          <td className="px-6 py-4">
                             <div className="flex flex-wrap gap-1">
                               {t.items.map(i => (
                                 <span key={i.id} className="text-[10px] bg-white border border-gray-200 px-2 py-0.5 rounded-full font-bold text-gray-600">
@@ -140,9 +183,7 @@ export default async function Home() {
                                 </span>
                               ))}
                             </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <div className="flex justify-end items-center space-x-3">
+                            <div className="flex justify-start sm:justify-end items-center space-x-3">
                               <Link 
                                 href={t.status === 'IN_PROGRESS' ? `/transactions/${t.id}/print` : `/transactions/${t.id}/print-return`} 
                                 className="text-gray-500 hover:text-gray-900"
@@ -157,121 +198,24 @@ export default async function Home() {
                               </Link>
                               <DeleteTransactionButton transactionId={t.id} />
                             </div>
-                          </td>
-                        </tr>
+                          </div>
+                        </li>
                       ))}
-                    </tbody>
-                  </table>
+                    </ul>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
           {/* Inventory Section */}
-          <div className="bg-white shadow-sm rounded-2xl overflow-hidden border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <div className="flex items-center">
-                <Package className="h-5 w-5 text-red-700 mr-2" />
-                <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Inventory Management</h2>
-              </div>
-              <Link
-                href="/add-item"
-                className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-bold rounded-lg text-white bg-red-700 hover:bg-red-800 shadow-sm transition-all"
-              >
-                <Plus className="-ml-0.5 mr-1 h-4 w-4" aria-hidden="true" />
-                Add Item
-              </Link>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Item</th>
-                    <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Stock</th>
-                    <th className="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-widest">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {item.imageUrl ? (
-                            <img src={item.imageUrl} alt="" className="h-8 w-8 rounded object-cover mr-3 border" />
-                          ) : (
-                            <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center mr-3 border">
-                              <Package className="h-4 w-4 text-gray-400" />
-                            </div>
-                          )}
-                          <div>
-                            <div className="text-sm font-bold text-gray-900">{item.name}</div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {item.sizes.length === 1 && item.sizes[0].size === 'Standard' 
-                                ? null
-                                : item.sizes.map(s => (
-                                  <span key={s.id} className="text-[10px] bg-gray-50 px-1 rounded border text-gray-500 font-bold">
-                                    {s.size}: {s.availableQuantity}/{s.totalQuantity}
-                                  </span>
-                                ))}
-                            </div>                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-gray-900">
-                          {item.sizes.reduce((acc, s) => acc + s.availableQuantity, 0)} / {item.sizes.reduce((acc, s) => acc + s.totalQuantity, 0)}
-                        </div>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase">{item.room} • {item.shelf}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end space-x-2">
-                          <Link href={`/edit-item/${item.id}`} className="text-blue-600 hover:text-blue-900">
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                          <DeleteItemButton itemId={item.id} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DashboardInventoryList items={items.slice(0, 5)} />
         </div>
 
         {/* Right 1/3: Users & Recent Activity */}
         <div className="space-y-8">
           {/* Users Section */}
-          <div className="bg-white shadow-sm rounded-2xl overflow-hidden border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-              <div className="flex items-center">
-                <Users className="h-5 w-5 text-red-700 mr-2" />
-                <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Users</h2>
-              </div>
-            </div>
-            <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto font-sans">
-              {users.map((user) => (
-                <Link 
-                  key={user.id} 
-                  href={`/users/${user.id}`}
-                  className="flex items-center px-6 py-5 hover:bg-red-50 transition-all group border-l-4 border-transparent hover:border-red-700 relative"
-                >
-                  <div className="flex-grow">
-                    <div className="flex items-center justify-between">
-                      <p className="text-base font-black text-gray-900 group-hover:text-red-700 transition-colors leading-tight">{user.name}</p>
-                    </div>
-                    <div className="flex items-center mt-1">
-                      <span className="text-[10px] text-gray-500 uppercase font-bold tracking-wider px-2 py-0.5 bg-gray-100 rounded border border-gray-200">{user.role}</span>
-                      <span className="text-[10px] text-gray-400 ml-2 font-medium">{user.email}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-[10px] font-black text-red-700 uppercase tracking-widest">View Profile</span>
-                    <ArrowUpRight className="h-5 w-5 text-red-700" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
+          <DashboardUserList users={users} />
 
           {/* Recent Activity */}
           <div className="bg-white shadow-sm rounded-2xl overflow-hidden border border-gray-200">

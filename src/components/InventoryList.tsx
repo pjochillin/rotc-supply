@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { Package, Search, Filter, Plus, X } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
+import ImageModal from './ImageModal';
 
 // Define the types for the props we'll receive
 interface Item {
@@ -24,6 +25,7 @@ export default function InventoryList({ items }: InventoryListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Get a list of unique categories for the filter dropdown
   const categories = useMemo(() => {
@@ -173,7 +175,7 @@ export default function InventoryList({ items }: InventoryListProps) {
                     <div className="flex items-center">
                       <div className="h-10 w-10 flex-shrink-0">
                         {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-md object-cover border shadow-sm" />
+                          <img src={item.imageUrl} alt={item.name} className="h-10 w-10 rounded-md object-cover border shadow-sm cursor-pointer" onClick={() => setSelectedImage(item.imageUrl)} />
                         ) : (
                           <div className="h-10 w-10 bg-gray-100 rounded-md flex items-center justify-center border border-dashed">
                             <Package className="h-6 w-6 text-gray-400" />
@@ -226,7 +228,7 @@ export default function InventoryList({ items }: InventoryListProps) {
                 <div className="flex items-center space-x-4">
                   <div className="h-12 w-12 flex-shrink-0">
                     {item.imageUrl ? (
-                      <img src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-md object-cover border shadow-sm" />
+                      <img src={item.imageUrl} alt={item.name} className="h-12 w-12 rounded-md object-cover border shadow-sm cursor-pointer" onClick={() => setSelectedImage(item.imageUrl)} />
                     ) : (
                       <div className="h-12 w-12 bg-gray-100 rounded-md flex items-center justify-center border border-dashed">
                         <Package className="h-8 w-8 text-gray-400" />
@@ -275,6 +277,7 @@ export default function InventoryList({ items }: InventoryListProps) {
           </ul>
         </div>
       </div>
+      <ImageModal imageUrl={selectedImage} onClose={() => setSelectedImage(null)} />
     </div>
   );
 }

@@ -154,7 +154,7 @@ export default function CompleteSignOutForm({
       <div className="space-y-8">
         {transaction.items.map((tItem) => (
           <div key={tItem.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center space-x-4">
                 {tItem.item.imageUrl ? (
                   <img src={tItem.item.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover border bg-white" />

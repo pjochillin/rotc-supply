@@ -42,8 +42,6 @@ model User {
   accounts                Account[]
   sessions                Session[]
   receivedTransactions    Transaction[] @relation("ReceivedTransactions")
-  initiatedTransactions   Transaction[] @relation("InitiatedTransactions")
-  completedTransactions   Transaction[] @relation("CompletedTransactions")
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
 }
@@ -76,20 +74,19 @@ model Session {
 }
 
 model Transaction {
-  id           String            @id @default(cuid())
-  recipientId  String
-  recipient    User              @relation("ReceivedTransactions", fields: [recipientId], references: [id])
-  initiatorId  String
-  initiator    User              @relation("InitiatedTransactions", fields: [initiatorId], references: [id])
-  completerId  String?
-  completer    User?             @relation("CompletedTransactions", fields: [completerId], references: [id])
-  status       TransactionStatus @default(IN_PROGRESS)
-  items        TransactionItem[]
-  checkoutDate DateTime          @default(now())
-  completedAt  DateTime?
-  returnDate   DateTime?
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
+  id            String            @id @default(cuid())
+  recipientId   String?
+  recipient     User?             @relation("ReceivedTransactions", fields: [recipientId], references: [id], onDelete: SetNull)
+  recipientName String?
+  initiatorName String?
+  completerName String?
+  status        TransactionStatus @default(IN_PROGRESS)
+  items         TransactionItem[]
+  checkoutDate  DateTime          @default(now())
+  completedAt   DateTime?
+  returnDate    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 }
 
 model TransactionItem {

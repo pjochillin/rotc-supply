@@ -1,21 +1,35 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { getOrCreateReturnTransaction } from '@/app/actions';
+import { initiateReturn, getUserOcie, findInProgressReturn } from '@/app/actions';
 import { Loader2 } from 'lucide-react';
 
 export default function ReturnProcessor() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get('userId');
+  const processingRef = useRef(false);
 
   useEffect(() => {
     if (userId) {
+      if (processingRef.current) return;
+      processingRef.current = true;
+
       const processReturn = async () => {
         try {
-          const transactionId = await getOrCreateReturnTransaction(userId);
-          router.push(`/transactions/return/confirm/${transactionId}?userId=${userId}`);
+          const existingTransaction = await findInProgressReturn(userId);
+          if (existingTransaction) {
+            router.push(`/transactions/return/confirm/${existingTransaction.id}`);
+            return;
+          }
+
+          const ocie = await getUserOcie(userId);
+          if (ocie.length === 0) {
+            throw new Error("This cadet has no items to return.");
+          }
+          const transactionId = await initiateReturn(userId);
+          router.push(`/transactions/return/confirm/${transactionId}`);
         } catch (error) {
           alert((error as Error).message);
           router.push(`/users/${userId}`);
@@ -23,8 +37,10 @@ export default function ReturnProcessor() {
       };
       processReturn();
     } else {
+      if (processingRef.current) return;
+      processingRef.current = true;
       alert('User ID is missing.');
-      router.push('/'); // Redirect if no user ID
+      router.push('/');
     }
   }, [userId, router]);
 

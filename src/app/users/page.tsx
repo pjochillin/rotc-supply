@@ -1,5 +1,9 @@
-import UserList from './UserList';
+import UserList from "./UserList";
 
 export default function UsersPage() {
-  return <UserList />;
+  return (
+    <div className="max-w-7xl mx-auto">
+      <UserList />
+    </div>
+  );
 }

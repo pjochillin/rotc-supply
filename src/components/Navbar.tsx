@@ -31,7 +31,7 @@ export default function Navbar() {
               </div>
               <span className="hidden sm:inline text-xl font-black text-red-700 tracking-tighter uppercase">Cornell ROTC Supply</span>
             </Link>
-            <div className="hidden lg:ml-6 lg:flex lg:space-x-8">
+            <div className="hidden xl:ml-6 xl:flex xl:space-x-8">
               <Link
                 href="/"
                 className="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
@@ -63,10 +63,10 @@ export default function Navbar() {
             </div>
           </div>
           <div className="flex items-center ml-auto">
-            <div className="hidden lg:flex lg:items-center">
+            <div className="hidden xl:flex xl:items-center">
               <UserNav />
             </div>
-            <div className="-mr-2 flex items-center lg:hidden">
+            <div className="-mr-2 flex items-center xl:hidden">
               <button
                 suppressHydrationWarning
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -88,7 +88,7 @@ export default function Navbar() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden"
+              className="xl:hidden"
             >
               <div className="space-y-1 pt-2 pb-3">
                 <Link

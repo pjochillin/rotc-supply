@@ -189,34 +189,42 @@ export async function getUser(id: string) {
 
 export async function deleteUser(userId: string) {
   await prisma.$transaction(async (tx) => {
-    // 1. Get the user's current outstanding OCIE record.
-    const ocieItems = await getUserOcie(userId);
+    // 1. Fetch the user's name before deleting them.
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+    const userName = user?.name ?? 'Unknown User';
 
-    // 2. For each outstanding item, decrement both the total and available quantity in the master supply record.
-    for (const item of ocieItems) {
-      if (item.quantity > 0) {
-        await tx.itemSize.update({
-          where: { id: item.itemSizeId },
-          data: {
-            totalQuantity: { decrement: item.quantity },
-            availableQuantity: { decrement: item.quantity },
-          },
-        });
-      }
-    }
-
-    // 3. Delete all transactions associated with the user.
-    await tx.transaction.deleteMany({
+    // 2. Anonymize the user in any transactions they were involved in.
+    //    This preserves the historical record of who did what.
+    await tx.transaction.updateMany({
       where: { recipientId: userId },
+      data: { recipientName: userName },
     });
 
-    // 4. Finally, delete the user.
+    // 3. Get the user's current outstanding OCIE record (items they possess).
+    const ocieItems = await getUserOcie(userId);
+
+    // 4. For each outstanding item, decrement the total quantity in the master supply record
+    //    to reflect that these items are permanently removed from inventory.
+    for (const item of ocieItems) {
+      await tx.itemSize.update({
+        where: { id: item.itemSizeId },
+        data: {
+          totalQuantity: { decrement: item.quantity },
+        },
+      });
+    }
+
+    // 5. Finally, delete the user record itself.
+    //    The schema's onDelete: SetNull will handle disassociating the user from transactions.
     await tx.user.delete({
       where: { id: userId },
     });
   });
 
-  // 5. Revalidate paths to reflect the changes.
+  // Revalidate cached paths to show the changes across the app.
   revalidatePath('/users');
   revalidatePath('/inventory');
   revalidatePath('/');
@@ -243,15 +251,22 @@ export async function getTransaction(id: string) {
  */
 export async function initiateSignOut(recipientId: string, items: { itemId: string; authQuantity: number }[]) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("User is not authenticated");
+  if (!session?.user?.id || !session.user.name) {
+    throw new Error("User is not authenticated or name is missing");
   }
   const initiatorId = session.user.id;
+  const initiatorName = session.user.name;
+
+  const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
+  if (!recipient || !recipient.name) {
+    throw new Error("Recipient not found or name is missing");
+  }
 
   const transaction = await prisma.transaction.create({
     data: {
       recipientId,
-      initiatorId,
+      recipientName: recipient.name,
+      initiatorName,
       status: 'IN_PROGRESS',
       items: {
         create: items.map(item => ({
@@ -267,38 +282,41 @@ export async function initiateSignOut(recipientId: string, items: { itemId: stri
   return transaction.id;
 }
 
-export async function getOrCreateReturnTransaction(recipientId: string) {
-  const ocie = await getUserOcie(recipientId);
-  if (ocie.length === 0) {
-    throw new Error("User has no items to return.");
+
+
+export async function findInProgressReturn(recipientId: string) {
+  if (!recipientId) {
+    return null;
   }
 
-  const existingReturn = await prisma.transaction.findFirst({
+  return prisma.transaction.findFirst({
     where: {
       recipientId,
       status: 'RETURN_IN_PROGRESS',
     },
   });
-
-  if (existingReturn) {
-    return existingReturn.id;
-  }
-
-  return initiateReturn(recipientId);
 }
 
 export async function initiateBatchSignOut(recipientIds: string[], items: { itemId: string; authQuantity: number }[]) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("User is not authenticated");
+  if (!session?.user?.id || !session.user.name) {
+    throw new Error("User is not authenticated or name is missing");
   }
-  const initiatorId = session.user.id;
+  const initiatorName = session.user.name;
+
+  const recipients = await prisma.user.findMany({
+    where: { id: { in: recipientIds } },
+    select: { id: true, name: true },
+  });
+
+  const recipientMap = new Map(recipients.map(r => [r.id, r.name]));
 
   for (const recipientId of recipientIds) {
     await prisma.transaction.create({
       data: {
         recipientId,
-        initiatorId,
+        recipientName: recipientMap.get(recipientId) ?? 'Unknown User',
+        initiatorName,
         status: 'IN_PROGRESS',
         items: {
           create: items.map(item => ({
@@ -355,13 +373,14 @@ export async function completeSignOut(
   itemsData: { 
     transactionItemId: string; 
     details: { itemSizeId: string; quantity: number }[] 
-  }[]
+  }
 ) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("User is not authenticated");
+  if (!session?.user?.id || !session.user.name) {
+    throw new Error("User is not authenticated or name is missing");
   }
   const completerId = session.user.id;
+  const completerName = session.user.name;
 
   await prisma.$transaction(async (tx) => {
     for (const item of itemsData) {
@@ -399,7 +418,7 @@ export async function completeSignOut(
       data: {
         status: 'COMPLETED',
         completedAt: new Date(),
-        completerId,
+        completerName,
       },
     });
   });
@@ -418,15 +437,22 @@ export async function initiateReturn(
   }[] = []
 ) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("User is not authenticated");
+  if (!session?.user?.id || !session.user.name) {
+    throw new Error("User is not authenticated or name is missing");
   }
   const initiatorId = session.user.id;
+  const initiatorName = session.user.name;
+
+  const recipient = await prisma.user.findUnique({ where: { id: recipientId } });
+  if (!recipient || !recipient.name) {
+    throw new Error("Recipient not found or name is missing");
+  }
 
   const transaction = await prisma.transaction.create({
     data: {
       recipientId,
-      initiatorId,
+      recipientName: recipient.name,
+      initiatorName,
       status: 'RETURN_IN_PROGRESS',
       items: {
         create: (itemsToReturn || []).map(item => ({
@@ -448,17 +474,18 @@ export async function initiateReturn(
 
 export async function confirmReturn(transactionId: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("User is not authenticated");
+  if (!session?.user?.id || !session.user.name) {
+    throw new Error("User is not authenticated or name is missing");
   }
   const completerId = session.user.id;
+  const completerName = session.user.name;
 
   const transaction = await prisma.transaction.update({
     where: { id: transactionId },
     data: {
       status: 'RETURNED',
       returnDate: new Date(),
-      completerId,
+      completerName,
     },
     include: {
       items: {
@@ -621,10 +648,10 @@ export async function completeReturn(
     }
 
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      throw new Error("User is not authenticated");
+    if (!session?.user?.id || !session.user.name) {
+      throw new Error("User is not authenticated or name is missing");
     }
-    const completerId = session.user.id;
+    const completerName = session.user.name;
 
     // 4. Mark the overall transaction as RETURNED
     const transaction = await tx.transaction.update({
@@ -632,7 +659,8 @@ export async function completeReturn(
       data: {
         status: 'RETURNED',
         returnDate: new Date(),
-        completerId,
+        completedAt: new Date(),
+        completerName,
       },
     });
 

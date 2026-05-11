@@ -17,8 +17,6 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     include: {
       receivedTransactions: {
         include: {
-          initiator: true,
-          completer: true,
           items: {
             include: {
               item: true,
@@ -80,44 +78,52 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="max-w-6xl mx-auto pb-12">
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <Link href="/users" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
-            <ArrowLeft className="h-6 w-6" />
+      <div className="mb-4 sm:mb-8 flex flex-col">
+        <div className="flex items-center justify-between sm:hidden mb-4">
+          <Link href="/users" className="flex items-center text-gray-600 hover:text-gray-800">
+            <ArrowLeft className="h-5 w-5 mr-1" />
+            <span className="font-bold">Back to Users</span>
           </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
-            <p className="text-gray-500 font-medium">{user.email} • <span className="uppercase text-xs font-black">{user.role}</span></p>
-          </div>
         </div>
-        <div className="flex items-center space-x-3">
-            <Link
-              href={`/users/${id}/print-ocie`}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all"
-            >
-              <Printer className="mr-2 h-4 w-4 text-red-700" />
-              Print OCIE Record
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-4">
+            <Link href="/users" className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600 hidden sm:block">
+              <ArrowLeft className="h-6 w-6" />
             </Link>
-            <ToggleRoleButton userId={user.id} currentRole={user.role} currentUserId={session?.user?.id} />
-            {currentlySignedOut.length > 0 ? (
-              <Link
-                href={`/transactions/return/new?userId=${id}`}
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-red-700 hover:bg-red-800 transition-all"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Process Return
-              </Link>
-            ) : (
-              <button
-                disabled
-                className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-gray-400 cursor-not-allowed"
-              >
-                <RotateCcw className="mr-2 h-4 w-4" />
-                Process Return
-              </button>
-            )}
-            <DeleteUserButton userId={id} />
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">{user.name}</h1>
+              <p className="text-gray-500 font-medium">{user.email} • <span className="uppercase text-xs font-black">{user.role}</span></p>
+            </div>
           </div>
+          <div className="flex flex-wrap items-center justify-start sm:justify-end gap-2">
+              <Link
+                href={`/users/${id}/print-ocie`}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-bold rounded-xl text-gray-700 bg-white hover:bg-gray-50 transition-all"
+              >
+                <Printer className="mr-2 h-4 w-4 text-red-700" />
+                Print OCIE Record
+              </Link>
+              <ToggleRoleButton userId={user.id} currentRole={user.role} currentUserId={session?.user?.id} />
+              {currentlySignedOut.length > 0 ? (
+                <Link
+                  href={`/transactions/return/new?userId=${id}`}
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-red-700 hover:bg-red-800 transition-all"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Process Return
+                </Link>
+              ) : (
+                <button
+                  disabled
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-bold rounded-xl text-white bg-gray-400 cursor-not-allowed"
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Process Return
+                </button>
+              )}
+              <DeleteUserButton userId={id} />
+            </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -165,67 +171,126 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wider">Transaction History</h2>
             </div>
             <div className="p-0">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50/50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Items</th>
-                    <th className="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-widest">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50/50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Items</th>
+                      <th className="px-6 py-3 text-right text-xs font-black text-gray-500 uppercase tracking-widest">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {user.receivedTransactions.map((t) => (
+                      <tr key={t.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {t.checkoutDate.toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {t.items.map(i => (
+                              <div key={i.id} className="text-[10px] bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-bold text-gray-600">
+                                {i.item.name}
+                                {i.details.length > 0 && (
+                                  <span className="text-red-700 ml-1">
+                                    ({i.details.map(d => d.itemSize.size === 'Standard' ? `x${d.quantity}` : `${d.itemSize.size} x${d.quantity}`).join(', ')})
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end">
+                            <span className={`inline-block text-[8px] font-black uppercase px-2 py-1 rounded-full ${
+                              t.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' : 
+                              t.status === 'RETURN_IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                              t.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {t.status.replace(/_/g, ' ')}
+                            </span>
+                            <TransactionDetailModal transaction={{
+                              id: t.id,
+                              items: t.items.map(i => {
+                                const sizeStr = i.details.length > 0 
+                                  ? ` (${i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})`
+                                  : '';
+                                return `${i.item.name}${sizeStr}`;
+                              }),
+                              recipient: user.name,
+                              initiator: t.initiatorName,
+                              completer: t.completerName ?? null,
+                              date: t.checkoutDate.toLocaleDateString(),
+                              type: t.status.includes('RETURN') ? 'Return' : 'Issue',
+                              status: t.status,
+                              isReturn: t.status.includes('RETURN'),
+                              createdAt: t.createdAt,
+                              completedAt: t.completedAt,
+                            }} />
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="sm:hidden">
+                <ul role="list" className="divide-y divide-gray-200">
                   {user.receivedTransactions.map((t) => (
-                    <tr key={t.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {t.checkoutDate.toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {t.items.map(i => (
-                            <div key={i.id} className="text-[10px] bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full font-bold text-gray-600">
-                              {i.item.name}
-                              {i.details.length > 0 && (
-                                <span className="text-red-700 ml-1">
-                                  ({i.details.map(d => d.itemSize.size === 'Standard' ? `x${d.quantity}` : `${d.itemSize.size} x${d.quantity}`).join(', ')})
-                                </span>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end">
-                          <span className={`inline-block text-[8px] font-black uppercase px-2 py-1 rounded-full ${
+                    <li key={t.id} className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-shrink-0 mr-4">
+                          <div className="text-sm font-bold text-gray-900">{t.checkoutDate.toLocaleDateString()}</div>
+                          <span className={`inline-block text-[8px] font-black uppercase mt-1 px-2 py-1 rounded-full ${
                             t.status === 'IN_PROGRESS' ? 'bg-yellow-100 text-yellow-800' : 
                             t.status === 'RETURN_IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
                             t.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                           }`}>
                             {t.status.replace(/_/g, ' ')}
                           </span>
-                          <TransactionDetailModal transaction={{
-                            id: t.id,
-                            items: t.items.map(i => {
-                              const sizeStr = i.details.length > 0 
-                                ? ` (${i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})`
-                                : '';
-                              return `${i.item.name}${sizeStr}`;
-                            }),
-                            recipient: user.name,
-                            initiator: t.initiator.name,
-                            completer: t.completer?.name ?? null,
-                            date: t.checkoutDate.toLocaleDateString(),
-                            type: t.status.includes('RETURN') ? 'Return' : 'Issue',
-                            status: t.status,
-                            isReturn: t.status.includes('RETURN'),
-                            createdAt: t.createdAt,
-                            completedAt: t.completedAt,
-                          }} />
                         </div>
-                      </td>
-                    </tr>
+                        <div className="flex-grow">
+                          <div className="flex flex-wrap gap-1">
+                            {t.items.map(i => (
+                              <div key={i.id} className="text-[10px] bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-md font-bold text-gray-600">
+                                {i.item.name}
+                                {i.details.length > 0 && (
+                                  <span className="text-red-700 ml-1">
+                                    ({i.details.map(d => d.itemSize.size === 'Standard' ? `x${d.quantity}` : `${d.itemSize.size} x${d.quantity}`).join(', ')})
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0 ml-2">
+                          <TransactionDetailModal transaction={{
+                              id: t.id,
+                              items: t.items.map(i => {
+                                const sizeStr = i.details.length > 0 
+                                  ? ` (${i.details.map(d => `${d.itemSize.size} x${d.quantity}`).join(', ')})`
+                                  : '';
+                                return `${i.item.name}${sizeStr}`;
+                              }),
+                              recipient: user.name,
+                              initiator: t.initiatorName,
+                              completer: t.completerName ?? null,
+                              date: t.checkoutDate.toLocaleDateString(),
+                              type: t.status.includes('RETURN') ? 'Return' : 'Issue',
+                              status: t.status,
+                              isReturn: t.status.includes('RETURN'),
+                              createdAt: t.createdAt,
+                              completedAt: t.completedAt,
+                            }} />
+                        </div>
+                      </div>
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+              </div>
             </div>
           </div>
         </div>

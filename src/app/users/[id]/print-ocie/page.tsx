@@ -52,7 +52,7 @@ export default async function PrintUserOCIEPage({
 
   return (
     <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0 print:max-w-none">
-      <div className="mb-8 flex items-center justify-between print:hidden">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
         <Link href={`/users/${id}`} className="flex items-center text-gray-600 hover:text-gray-900 font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Profile
@@ -60,7 +60,18 @@ export default async function PrintUserOCIEPage({
         <PrintButton />
       </div>
 
-      <div className="bg-white p-8 border shadow-sm print:shadow-none print:border-none print:p-0 text-black font-serif">
+      {/* Mobile Placeholder */}
+      <div className="lg:hidden print:hidden bg-gray-50 p-6 rounded-lg border border-dashed text-center">
+        <h2 className="text-lg font-bold text-gray-800">OCIE Sheet is Ready</h2>
+        <p className="text-gray-600 mt-2">
+          The printable OCIE sheet is not displayed on small screens to save space.
+        </p>
+        <p className="text-gray-600 mt-1">
+          Please view on a desktop or press the print button to generate the document.
+        </p>
+      </div>
+
+      <div className="hidden lg:block print:block bg-white p-8 border shadow-sm print:shadow-none print:border-none print:p-0 text-black font-serif">
         <div className="grid grid-cols-4 border-2 border-black text-[10px] mb-4">
           <div className="col-span-3 p-2 border-r-2 border-black">
             <h1 className="text-base font-bold uppercase underline">Individual OCIE Record (Digital DA 3645)</h1>

@@ -8,8 +8,8 @@ export type TransactionDetail = {
   id: string;
   items: string[];
   recipient: string | null;
-  initiator: string | null;
-  completer: string | null;
+  initiatorName: string | null;
+  completerName: string | null;
   date: string;
   type: string;
   status: string;
@@ -102,12 +102,12 @@ export default function TransactionDetailModal({ transaction }: { transaction: T
                         </div>
                         <div>
                             <dt className="font-medium text-gray-500">Initiated By</dt>
-                            <dd className="text-gray-900 mt-1">{transaction.initiator} at {new Date(transaction.createdAt).toLocaleString()}</dd>
+                            <dd className="text-gray-900 mt-1">{transaction.initiatorName} at {new Date(transaction.createdAt).toLocaleString()}</dd>
                         </div>
-                        {transaction.completer && (
+                        {transaction.completerName && (
                             <div>
                                 <dt className="font-medium text-gray-500">Completed By</dt>
-                                <dd className="text-gray-900 mt-1">{transaction.completer} at {transaction.completedAt ? new Date(transaction.completedAt).toLocaleString() : 'N/A'}</dd>
+                                <dd className="text-gray-900 mt-1">{transaction.completerName} at {transaction.completedAt ? new Date(transaction.completedAt).toLocaleString() : 'N/A'}</dd>
                             </div>
                         )}
                     </dl>

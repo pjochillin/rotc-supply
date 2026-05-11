@@ -109,7 +109,7 @@ export default function CompleteReturnForm({
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Link href={`/users/${transaction.userId}`} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-600">
             <ArrowLeft className="h-6 w-6" />
@@ -131,7 +131,7 @@ export default function CompleteReturnForm({
       <div className="space-y-8">
         {transaction.items.map((tItem) => (
           <div key={tItem.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="bg-gray-50 px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center space-x-4">
                 {tItem.item.imageUrl ? (
                   <img src={tItem.item.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover border bg-white" />
@@ -156,10 +156,10 @@ export default function CompleteReturnForm({
 
             <div className="p-6 space-y-4">
               {itemDetails[tItem.id].map((detail, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                <div key={idx} className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-end bg-gray-50/50 p-4 rounded-xl border border-gray-100">
                   <div className="md:col-span-7">
                     <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Size Returned</label>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {tItem.item.sizes.map(size => (
                         <button
                           key={size.id}

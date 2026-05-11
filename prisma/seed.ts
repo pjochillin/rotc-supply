@@ -65,8 +65,9 @@ async function main() {
   await prisma.transaction.create({
     data: {
       recipient: { connect: { id: user1.id } },
-      initiator: { connect: { id: user1.id } },
-      completer: { connect: { id: user1.id } },
+      recipientName: user1.name,
+      initiatorName: user1.name,
+      completerName: user1.name,
       status: 'COMPLETED',
       completedAt: new Date(),
       items: {
@@ -92,7 +93,8 @@ async function main() {
   await prisma.transaction.create({
     data: {
       recipient: { connect: { id: user2.id } },
-      initiator: { connect: { id: user1.id } }, // Assuming user1 initiated this for simplicity
+      recipientName: user2.name,
+      initiatorName: user1.name, // Assuming user1 initiated this for simplicity
       status: 'IN_PROGRESS',
       items: {
         create: [

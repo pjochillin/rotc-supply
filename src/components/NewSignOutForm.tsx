@@ -116,7 +116,7 @@ export default function NewSignOutPage({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Step 1: Pick User */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="lg:col-span-1 lg:row-span-1">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
@@ -179,50 +179,10 @@ export default function NewSignOutPage({
               )}
             </div>
           </div>
-
-          {/* Selection Summary */}
-          <div className="bg-gray-900 text-white p-6 rounded-xl shadow-lg space-y-6">
-            <h3 className="font-bold text-lg border-b border-gray-700 pb-2">Sign Out Summary</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Cadet(s):</span>
-                  <div className="font-medium text-right">
-                    {selectedUserIds.length > 0 
-                      ? selectedUserIds.map(id => users.find(u => u.id === id)?.name).join(', ')
-                      : 'Not selected'}
-                  </div>
-                </div>
-              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
-                {Object.entries(selectedItems).map(([id, qty]) => {
-                  const item = items.find(i => i.id === id);
-                  return (
-                    <div key={id} className="flex justify-between text-xs bg-gray-800 p-2 rounded">
-                      <span className="truncate mr-2">{item?.name}</span>
-                      <span className="font-black text-red-400">x{qty}</span>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex justify-between text-sm border-t border-gray-700 pt-4">
-                <span className="text-gray-400">Total Items:</span>
-                <span className="font-medium">{Object.keys(selectedItems).length}</span>
-              </div>
-            </div>
-            <button
-              onClick={handleSubmit}
-              disabled={selectedUserIds.length === 0 || Object.keys(selectedItems).length === 0 || isSubmitting}
-              className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold transition-all flex items-center justify-center"
-            >
-              {isSubmitting 
-                ? (isBatchMode ? 'Creating Transactions...' : 'Creating...')
-                : (isBatchMode ? 'Initiate Batch Sign Out' : 'Initiate & Print Sheet')}
-              <ClipboardList className="ml-2 h-5 w-5" />
-            </button>
-          </div>
         </div>
 
         {/* Step 2: Pick Items */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-start-2 lg:col-span-2 lg:row-span-2">
           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center">
@@ -249,13 +209,14 @@ export default function NewSignOutPage({
                 return (
                   <div
                     key={item.id}
-                    className={`relative p-4 rounded-xl border-2 transition-all flex flex-col ${
+                    onClick={() => toggleItem(item.id)}
+                    className={`relative p-4 rounded-xl border-2 transition-all flex flex-col cursor-pointer ${
                       isSelected 
                         ? 'border-red-600 bg-red-50 shadow-md' 
                         : 'border-gray-100 hover:border-red-200 hover:bg-gray-50'
                     }`}
                   >
-                    <div className="flex items-center space-x-4 mb-3 cursor-pointer" onClick={() => toggleItem(item.id)}>
+                    <div className="flex items-center space-x-4 mb-3">
                       {item.imageUrl ? (
                         <img src={item.imageUrl} alt="" className="h-12 w-12 rounded-lg object-cover border shadow-sm" />
                       ) : (
@@ -294,6 +255,48 @@ export default function NewSignOutPage({
                 );
               })}
             </div>
+          </div>
+        </div>
+
+        {/* Selection Summary */}
+        <div className="lg:col-start-1 lg:row-start-2">
+          <div className="bg-gray-900 text-white p-6 rounded-xl shadow-lg space-y-6">
+            <h3 className="font-bold text-lg border-b border-gray-700 pb-2">Sign Out Summary</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Cadet(s):</span>
+                  <div className="font-medium text-right">
+                    {selectedUserIds.length > 0 
+                      ? selectedUserIds.map(id => users.find(u => u.id === id)?.name).join(', ')
+                      : 'Not selected'}
+                  </div>
+                </div>
+              <div className="max-h-60 overflow-y-auto space-y-2 pr-2">
+                {Object.entries(selectedItems).map(([id, qty]) => {
+                  const item = items.find(i => i.id === id);
+                  return (
+                    <div key={id} className="flex justify-between text-xs bg-gray-800 p-2 rounded">
+                      <span className="truncate mr-2">{item?.name}</span>
+                      <span className="font-black text-red-400">x{qty}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex justify-between text-sm border-t border-gray-700 pt-4">
+                <span className="text-gray-400">Total Items:</span>
+                <span className="font-medium">{Object.keys(selectedItems).length}</span>
+              </div>
+            </div>
+            <button
+              onClick={handleSubmit}
+              disabled={selectedUserIds.length === 0 || Object.keys(selectedItems).length === 0 || isSubmitting}
+              className="w-full py-3 bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg font-bold transition-all flex items-center justify-center"
+            >
+              {isSubmitting 
+                ? (isBatchMode ? 'Creating Transactions...' : 'Creating...')
+                : (isBatchMode ? 'Initiate Batch Sign Out' : 'Initiate & Print Sheet')}
+              <ClipboardList className="ml-2 h-5 w-5" />
+            </button>
           </div>
         </div>
       </div>
