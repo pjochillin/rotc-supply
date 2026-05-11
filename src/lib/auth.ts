@@ -87,6 +87,32 @@ export const authOptions: NextAuthOptions = {
         console.log(`[AUTH] Denying sign-in for unapproved user: ${user.email}`);
         return false;
       }
+
+      const accountAlreadyLinked = await prisma.account.findFirst({
+        where: {
+          provider: account.provider,
+          providerAccountId: account.providerAccountId,
+        },
+      });
+
+      if (!accountAlreadyLinked) {
+        await prisma.account.create({
+          data: {
+            userId: dbUser.id,
+            type: account.type,
+            provider: account.provider,
+            providerAccountId: account.providerAccountId,
+            refresh_token: account.refresh_token,
+            access_token: account.access_token,
+            expires_at: account.expires_at,
+            token_type: account.token_type,
+            scope: account.scope,
+            id_token: account.id_token,
+          },
+        });
+        console.log(`[AUTH] Successfully linked new account for ${user.email}`);
+      }
+
       console.log(`[AUTH] Allowing sign-in for approved user: ${user.email}`);
       return true;
     },
