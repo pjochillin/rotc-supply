@@ -12,7 +12,6 @@ const providers: any[] = [
     authorization: { params: { scope: 'openid profile' } },
     clientId: process.env.OIDC_CLIENT_ID!,
     clientSecret: process.env.OIDC_CLIENT_SECRET!,
-    allowDangerousEmailAccountLinking: true,
     idToken: true,
     checks: ['pkce', 'state'],
     profile(profile: Profile) {
@@ -86,18 +85,6 @@ export const authOptions: NextAuthOptions = {
 
 
 
-      // If user does not exist and it's an OIDC login, create a new user.
-      if (!dbUser && account?.provider === 'oidc') {
-        console.log(`[AUTH] New user from OIDC: ${user.email}. Creating user.`);
-        dbUser = await prisma.user.create({
-            data: {
-                email: user.email,
-                name: user.name,
-                role: 'USER', // Default role for new users
-            }
-        });
-      }
-      
       if (!dbUser) {
         console.log(`[AUTH] Denying sign-in for unapproved user: ${user.email}`);
         return false;
