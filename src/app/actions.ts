@@ -535,7 +535,7 @@ export async function getUserOcie(userId: string) {
         transaction: {
           recipientId: userId,
           status: 'COMPLETED',
-        },
+          },
       },
     },
     _sum: {

@@ -31,8 +31,8 @@ export default async function HistoryPage() {
         return `${i.item.name}${sizeStr}`;
       }),
       recipient: t.recipient?.name ?? t.recipientName,
-      initiator: t.initiatorName,
-      completer: t.completerName ?? null,
+      initiatorName: t.initiatorName,
+      completerName: t.completerName ?? null,
       date: (isReturn ? t.returnDate : t.checkoutDate)?.toLocaleDateString() ?? 'N/A',
       type: t.status,
       status: t.status,

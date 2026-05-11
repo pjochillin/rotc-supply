@@ -15,6 +15,7 @@ const providers: any[] = [
     idToken: true,
     checks: ['pkce', 'state'],
     profile(profile: Profile) {
+      console.log("[AUTH] OIDC Profile received:", profile);
       return {
         id: profile.sub,
         name: profile.name,
@@ -57,6 +58,9 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
+      console.log("[AUTH] signIn callback triggered.");
+      console.log("[AUTH] User object:", user);
+      console.log("[AUTH] Account object:", account);
       // Allow sign in for the credentials provider
       if (account?.provider === 'credentials') {
         console.log(`[AUTH] Allowing sign-in for local dev user: ${user.email}`);
@@ -68,9 +72,24 @@ export const authOptions: NextAuthOptions = {
         console.log('[AUTH] Denying sign-in: No email found in user profile.');
         return false;
       }
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email },
+      
+      // Use findFirst with case-insensitive search for email
+      let dbUser = await prisma.user.findFirst({
+        where: { email: { equals: user.email, mode: 'insensitive' } },
       });
+
+      // If user does not exist and it's an OIDC login, create a new user.
+      if (!dbUser && account?.provider === 'oidc') {
+        console.log(`[AUTH] New user from OIDC: ${user.email}. Creating user.`);
+        dbUser = await prisma.user.create({
+            data: {
+                email: user.email,
+                name: user.name,
+                role: 'USER', // Default role for new users
+            }
+        });
+      }
+      
       if (!dbUser) {
         console.log(`[AUTH] Denying sign-in for unapproved user: ${user.email}`);
         return false;
@@ -79,6 +98,10 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account }) {
+      console.log("[AUTH] jwt callback triggered.");
+      console.log("[AUTH] JWT token object:", token);
+      console.log("[AUTH] JWT user object:", user);
+      console.log("[AUTH] JWT account object:", account);
       if (account && user) {
         token.id = user.id;
         token.role = user.role;
