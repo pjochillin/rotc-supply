@@ -16,11 +16,12 @@ const providers: any[] = [
     checks: ['pkce', 'state'],
     profile(profile: Profile) {
       console.log("[AUTH] OIDC Profile received:", profile);
+      const name = profile.name || profile.displayName;
       const email = `${profile.sub}@cornell.edu`;
       console.log(`[AUTH] Constructed email: ${email}`);
       return {
         id: profile.sub,
-        name: profile.name,
+        name: name,
         email: email,
       };
     },
@@ -53,7 +54,9 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma, {
+    allowDangerousEmailAccountLinking: true,
+  }),
   providers,
   session: {
     strategy: 'jwt',
@@ -79,6 +82,15 @@ export const authOptions: NextAuthOptions = {
       let dbUser = await prisma.user.findFirst({
         where: { email: { equals: user.email, mode: 'insensitive' } },
       });
+
+      if (dbUser && !dbUser.name && user.name) {
+        console.log(`[AUTH] Existing user ${dbUser.email} is missing a name. Updating to '${user.name}'.`);
+        const updatedUser = await prisma.user.update({
+          where: { id: dbUser.id },
+          data: { name: user.name }
+        });
+        dbUser.name = updatedUser.name;
+      }
 
       // If user does not exist and it's an OIDC login, create a new user.
       if (!dbUser && account?.provider === 'oidc') {
