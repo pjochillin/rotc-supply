@@ -9,9 +9,7 @@ export async function GET(
   const transaction = await prisma.transaction.findUnique({
     where: { id },
     include: { 
-      recipient: true,
-      initiator: true,
-      completer: true
+      recipient: true
     },
   });
   if (!transaction) {

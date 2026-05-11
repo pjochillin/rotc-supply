@@ -20,7 +20,6 @@ export default async function PrintTransactionPage({
     where: { id },
     include: {
       recipient: true,
-      initiator: true,
       items: {
         include: {
           item: true
@@ -29,7 +28,7 @@ export default async function PrintTransactionPage({
     }
   });
 
-  if (!transaction) notFound();
+  if (!transaction || !transaction.recipient) notFound();
 
   return (
     <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0 print:max-w-none">

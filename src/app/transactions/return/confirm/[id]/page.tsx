@@ -27,6 +27,10 @@ function ConfirmReturnForm({ transactionId }: { transactionId: string }) {
         if (!transaction) throw new Error('Transaction not found');
         const userId = transaction.recipientId;
 
+        if (!userId) {
+          throw new Error("User ID not found for this transaction.");
+        }
+
         const [userData, ocieData] = await Promise.all([
           getUser(userId),
           getUserOcie(userId),

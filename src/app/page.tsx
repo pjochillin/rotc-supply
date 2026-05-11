@@ -127,7 +127,7 @@ export default async function Home() {
                         {inProgressTransactions.map((t) => (
                           <tr key={t.id} className="hover:bg-red-50/30 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-bold text-gray-900">{t.recipient.name}</div>
+                              <div className="text-sm font-bold text-gray-900">{t.recipientName}</div>
                               <div className="text-[10px] font-bold text-gray-400 uppercase">
                                 {t.status === 'IN_PROGRESS' ? 'Issue' : 'Return'} by {t.initiatorName} • {t.checkoutDate.toLocaleDateString()}
                               </div>
@@ -171,7 +171,7 @@ export default async function Home() {
                         <li key={t.id} className="p-4">
                           <div className="flex flex-col gap-2">
                             <div>
-                              <div className="text-sm font-bold text-gray-900">{t.recipient.name}</div>
+                              <div className="text-sm font-bold text-gray-900">{t.recipientName}</div>
                               <div className="text-[10px] font-bold text-gray-400 uppercase">
                                 {t.status === 'IN_PROGRESS' ? 'Issue' : 'Return'} by {t.initiatorName} • {t.checkoutDate.toLocaleDateString()}
                               </div>

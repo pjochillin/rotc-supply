@@ -16,8 +16,6 @@ export async function GET(
     where: { id },
     include: {
       recipient: true,
-      initiator: true,
-      completer: true,
       items: {
         include: {
           item: true,

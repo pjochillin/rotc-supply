@@ -28,7 +28,7 @@ interface TransactionItem {
 
 interface Transaction {
   id: string;
-  recipient: { name: string | null };
+  recipient: { name: string | null } | null;
   items: TransactionItem[];
 }
 
@@ -39,6 +39,16 @@ export default function CompleteSignOutForm({
 }) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!transaction.recipient) {
+    return (
+      <div className="max-w-5xl mx-auto pb-12 text-center">
+        <h1 className="text-2xl font-bold text-red-600">Error</h1>
+        <p className="text-gray-600 mt-2">This transaction does not have a valid recipient and cannot be completed.</p>
+        <Link href="/" className="mt-4 inline-block text-blue-600 hover:underline">Go back to Dashboard</Link>
+      </div>
+    );
+  }
   
   // Track multiple size selections per transaction item
   const [itemDetails, setItemDetails] = useState<Record<string, { itemSizeId: string; quantity: number }[]>>(() => {

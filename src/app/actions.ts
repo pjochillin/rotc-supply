@@ -373,7 +373,7 @@ export async function completeSignOut(
   itemsData: { 
     transactionItemId: string; 
     details: { itemSizeId: string; quantity: number }[] 
-  }
+  }[]
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || !session.user.name) {

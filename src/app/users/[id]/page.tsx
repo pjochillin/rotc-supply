@@ -219,8 +219,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                                 return `${i.item.name}${sizeStr}`;
                               }),
                               recipient: user.name,
-                              initiator: t.initiatorName,
-                              completer: t.completerName ?? null,
+                              initiatorName: t.initiatorName,
+                              completerName: t.completerName ?? null,
                               date: t.checkoutDate.toLocaleDateString(),
                               type: t.status.includes('RETURN') ? 'Return' : 'Issue',
                               status: t.status,
@@ -276,8 +276,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                                 return `${i.item.name}${sizeStr}`;
                               }),
                               recipient: user.name,
-                              initiator: t.initiatorName,
-                              completer: t.completerName ?? null,
+                              initiatorName: t.initiatorName,
+                              completerName: t.completerName ?? null,
                               date: t.checkoutDate.toLocaleDateString(),
                               type: t.status.includes('RETURN') ? 'Return' : 'Issue',
                               status: t.status,

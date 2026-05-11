@@ -31,10 +31,10 @@ export default async function PrintReturnPage({
     }
   });
 
-  if (!transaction) notFound();
+  if (!transaction || !transaction.recipient) notFound();
 
   // 1. Fetch the full OCIE record for the user
-  const ocieRecord = await getUserOcie(transaction.recipientId);
+  const ocieRecord = await getUserOcie(transaction.recipient.id);
 
   // 2. Create a map of items returned in this specific transaction
   const returnedItemsMap = new Map<string, number>();
@@ -53,7 +53,7 @@ export default async function PrintReturnPage({
   return (
     <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0 print:max-w-none">
       <div className="mb-8 flex items-center justify-between print:hidden">
-        <Link href={`/users/${transaction.recipientId}`} className="flex items-center text-gray-600 hover:text-gray-900 font-bold">
+        <Link href={`/users/${transaction.recipient.id}`} className="flex items-center text-gray-600 hover:text-gray-900 font-bold">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Profile
         </Link>
