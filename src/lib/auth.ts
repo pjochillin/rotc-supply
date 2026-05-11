@@ -12,13 +12,16 @@ const providers: any[] = [
     authorization: { params: { scope: 'openid profile' } },
     clientId: process.env.OIDC_CLIENT_ID!,
     clientSecret: process.env.OIDC_CLIENT_SECRET!,
+    allowDangerousEmailAccountLinking: true,
     idToken: true,
     checks: ['pkce', 'state'],
     profile(profile: Profile) {
       console.log("[AUTH] OIDC Profile received:", profile);
-      const name = profile.name || profile.displayName;
       const email = `${profile.sub}@cornell.edu`;
+      // OIDC profile may not have name, use NetID (sub) as fallback.
+      const name = profile.name || profile.sub;
       console.log(`[AUTH] Constructed email: ${email}`);
+      console.log(`[AUTH] Using name: ${name}`);
       return {
         id: profile.sub,
         name: name,
@@ -54,9 +57,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma, {
-    allowDangerousEmailAccountLinking: true,
-  }),
+  adapter: PrismaAdapter(prisma),
   providers,
   session: {
     strategy: 'jwt',
@@ -83,14 +84,7 @@ export const authOptions: NextAuthOptions = {
         where: { email: { equals: user.email, mode: 'insensitive' } },
       });
 
-      if (dbUser && !dbUser.name && user.name) {
-        console.log(`[AUTH] Existing user ${dbUser.email} is missing a name. Updating to '${user.name}'.`);
-        const updatedUser = await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { name: user.name }
-        });
-        dbUser.name = updatedUser.name;
-      }
+
 
       // If user does not exist and it's an OIDC login, create a new user.
       if (!dbUser && account?.provider === 'oidc') {
