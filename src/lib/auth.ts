@@ -16,10 +16,12 @@ const providers: any[] = [
     checks: ['pkce', 'state'],
     profile(profile: Profile) {
       console.log("[AUTH] OIDC Profile received:", profile);
+      const email = `${profile.sub}@cornell.edu`;
+      console.log(`[AUTH] Constructed email: ${email}`);
       return {
         id: profile.sub,
         name: profile.name,
-        email: profile.email,
+        email: email,
       };
     },
   },
