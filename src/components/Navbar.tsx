@@ -6,8 +6,11 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { UserNav } from './UserNav';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSession } from 'next-auth/react';
 
 export default function Navbar() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === 'ADMIN';
   const [logoError, setLogoError] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -31,6 +34,7 @@ export default function Navbar() {
               </div>
               <span className="hidden sm:inline text-xl font-black text-red-700 tracking-tighter uppercase">Cornell ROTC Supply</span>
             </Link>
+            {isAdmin && (
             <div className="hidden xl:ml-6 xl:flex xl:space-x-8">
               <Link
                 href="/"
@@ -61,6 +65,7 @@ export default function Navbar() {
                 History
               </Link>
             </div>
+            )}
           </div>
           <div className="flex items-center ml-auto">
             <div className="hidden xl:flex xl:items-center">
@@ -90,6 +95,7 @@ export default function Navbar() {
               exit={{ opacity: 0, height: 0 }}
               className="xl:hidden"
             >
+            {isAdmin && (
               <div className="space-y-1 pt-2 pb-3">
                 <Link
                   href="/"
@@ -120,6 +126,7 @@ export default function Navbar() {
                   History
                 </Link>
               </div>
+              )}
               <div className="border-t border-gray-200 pt-4 pb-3">
                 <UserNav />
               </div>

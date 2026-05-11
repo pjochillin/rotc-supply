@@ -36,19 +36,17 @@ if (process.env.NODE_ENV === 'development') {
       name: 'localhost',
       credentials: {},
       async authorize() {
-        let user = await prisma.user.findUnique({
-          where: { email: 'jo447@cornell.edu' },
+        const email = 'adc273@cornell.edu';
+        const user = await prisma.user.upsert({
+          where: { email },
+          update: { role: 'USER' },
+          create: {
+            email,
+            name: 'Andrew Campbell',
+            role: 'USER',
+          },
         });
-        if (!user) {
-          console.log('Local development user (jo447@cornell.edu) not found. Creating a new one.');
-          user = await prisma.user.create({
-            data: {
-              email: 'jo447@cornell.edu',
-              name: 'Joshua Ochalek',
-              role: 'ADMIN',
-            },
-          });
-        }
+        console.log('Ensured local development user is USER role.');
         return user;
       },
     })
@@ -93,13 +91,17 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, account }) {
-      console.log("[AUTH] jwt callback triggered.");
-      console.log("[AUTH] JWT token object:", token);
-      console.log("[AUTH] JWT user object:", user);
-      console.log("[AUTH] JWT account object:", account);
-      if (account && user) {
+      if (account && user) { // This block only runs on sign-in
         token.id = user.id;
-        token.role = user.role;
+        token.name = user.name;
+        // For local development, force the role to USER in the token
+        if (account.provider === 'credentials') {
+            console.log('[AUTH] Credentials provider sign-in. Forcing USER role in JWT.');
+            token.role = 'USER';
+        } else {
+            // For other providers, use the role from the user object
+            token.role = user.role;
+        }
       }
       return token;
     },
