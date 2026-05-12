@@ -11,7 +11,17 @@ export async function createItem(formData: FormData) {
   const category = formData.get('category') as string;
   const room = formData.get('room') as string;
   const shelf = formData.get('shelf') as string;
-  const imageUrl = formData.get('imageUrl') as string;
+
+  const dataToUpdate: { name: string, category: string, room: string, shelf: string, imageUrl?: string } = {
+    name,
+    category,
+    room,
+    shelf,
+  };
+
+  if (formData.has('imageUrl')) {
+    dataToUpdate.imageUrl = formData.get('imageUrl') as string;
+  }
   
   const sizesJson = formData.get('sizes') as string;
   let sizesData = sizesJson ? JSON.parse(sizesJson) : [];
@@ -81,7 +91,7 @@ export async function updateItem(id: string, formData: FormData) {
     // First, update the basic details of the item.
     await tx.item.update({
       where: { id },
-      data: { name, category, room, shelf, imageUrl },
+      data: dataToUpdate,
     });
 
     const existingSizes = await tx.itemSize.findMany({ where: { itemId: id } });
