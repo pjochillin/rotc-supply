@@ -14,7 +14,10 @@ export async function createItem(formData: FormData) {
   const imageUrl = formData.get('imageUrl') as string;
   
   const sizesJson = formData.get('sizes') as string;
-  const sizesData = sizesJson ? JSON.parse(sizesJson) : [];
+  let sizesData = sizesJson ? JSON.parse(sizesJson) : [];
+  if (sizesData.length === 0) {
+    sizesData = [{ size: 'Standard', quantity: '0' }];
+  }
 
   await prisma.item.create({
     data: {
@@ -37,6 +40,32 @@ export async function createItem(formData: FormData) {
   revalidatePath('/');
 }
 
+export async function adjustItemQuantity(itemSizeId: string, adjustment: number) {
+  const itemSize = await prisma.itemSize.findUnique({ where: { id: itemSizeId } });
+  if (!itemSize) {
+    throw new Error('Item size not found');
+  }
+
+  const newAvailableQuantity = itemSize.availableQuantity + adjustment;
+  const newTotalQuantity = itemSize.totalQuantity + adjustment;
+
+  if (newAvailableQuantity < 0 || newTotalQuantity < 0) {
+    throw new Error('Quantity cannot be negative');
+  }
+
+  await prisma.itemSize.update({
+    where: { id: itemSizeId },
+    data: {
+      availableQuantity: newAvailableQuantity,
+      totalQuantity: newTotalQuantity,
+    },
+  });
+
+  revalidatePath('/inventory');
+  revalidatePath('/');
+  revalidatePath(`/edit-item/${itemSize.itemId}`);
+}
+
 export async function updateItem(id: string, formData: FormData) {
   const name = formData.get('name') as string;
   const category = formData.get('category') as string;
@@ -55,54 +84,64 @@ export async function updateItem(id: string, formData: FormData) {
       data: { name, category, room, shelf, imageUrl },
     });
 
-    // Get the current sizes of the item from the database.
     const existingSizes = await tx.itemSize.findMany({ where: { itemId: id } });
-    const existingSizeIds = existingSizes.map(s => s.id);
 
-    // Get the IDs of the sizes submitted from the form.
-    // Filter out any new sizes which won't have an ID yet.
-    const submittedSizeIds = sizesData.map((s: any) => s.id).filter(Boolean);
+    const isSwitchingFromStandard = existingSizes.length === 1 && 
+                                  existingSizes[0].size === 'Standard' &&
+                                  sizesData.some((s: any) => s.size !== 'Standard');
 
-    // Determine which sizes need to be deleted.
-    // These are sizes that exist in the database but not in the form submission.
-    const idsToDelete = existingSizeIds.filter(id => !submittedSizeIds.includes(id));
-    if (idsToDelete.length > 0) {
-      await tx.itemSize.deleteMany({
-        where: {
-          id: { in: idsToDelete },
-        },
+    if (isSwitchingFromStandard) {
+      // This is the special case where we switch from a single standard size to multiple sizes.
+      // We delete the old standard size and create the new ones.
+      await tx.itemSize.deleteMany({ where: { itemId: id } });
+      await tx.itemSize.createMany({
+        data: sizesData
+          .filter((s: any) => s.size !== 'Standard') // Ensure we don't re-create a standard size if it was passed
+          .map((s: any) => ({
+            itemId: id,
+            size: s.size,
+            totalQuantity: parseInt(s.quantity) || 0,
+            availableQuantity: parseInt(s.quantity) || 0,
+          })),
       });
-    }
+    } else {
+      // This is the normal update path for items that already have multiple sizes,
+      // or for items that only have a single 'Standard' size being updated.
+      const existingSizeIds = existingSizes.map(s => s.id);
+      const submittedSizeIds = sizesData.map((s: any) => s.id).filter(Boolean);
 
-    // Iterate through the submitted sizes to either create new ones or update existing ones.
-    for (const sizeInfo of sizesData) {
-      const quantity = parseInt(sizeInfo.quantity);
+      // Deletions
+      const idsToDelete = existingSizeIds.filter(id => !submittedSizeIds.includes(id));
+      if (idsToDelete.length > 0) {
+        await tx.itemSize.deleteMany({ where: { id: { in: idsToDelete } } });
+      }
 
-      if (sizeInfo.id) {
-        // If the size has an ID, it's an existing size that needs to be updated.
-        const existingSize = existingSizes.find(s => s.id === sizeInfo.id);
-        if (existingSize) {
+      // Updates and Creations
+      for (const sizeInfo of sizesData) {
+        const quantity = parseInt(sizeInfo.quantity);
+        if (sizeInfo.id && existingSizeIds.includes(sizeInfo.id)) {
+          // Update existing size
+          const existingSize = existingSizes.find(s => s.id === sizeInfo.id)!;
           const quantityDifference = quantity - existingSize.totalQuantity;
           await tx.itemSize.update({
             where: { id: sizeInfo.id },
             data: {
               size: sizeInfo.size,
               totalQuantity: quantity,
-              // Adjust available quantity based on the change in total quantity.
               availableQuantity: Math.max(0, existingSize.availableQuantity + quantityDifference),
             },
           });
+        } else {
+          // Create new size
+          await tx.itemSize.create({
+            data: {
+              itemId: id,
+              size: sizeInfo.size,
+              totalQuantity: quantity,
+              availableQuantity: quantity,
+            },
+          });
         }
-      } else {
-        // If the size has no ID, it's a new size that needs to be created.
-        await tx.itemSize.create({
-          data: {
-            itemId: id,
-            size: sizeInfo.size,
-            totalQuantity: quantity,
-            availableQuantity: quantity,
-          },
-        });
       }
     }
   });

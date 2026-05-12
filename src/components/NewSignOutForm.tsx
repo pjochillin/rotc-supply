@@ -66,13 +66,18 @@ export default function NewSignOutPage({
     });
   };
 
-  const updateQty = (itemId: string, qty: number) => {
-    if (qty < 1) {
-      toggleItem(itemId);
+  const updateQty = (itemId: string, newQty: number) => {
+    if (newQty < 1) {
+      // If quantity drops below 1, unselect the item
+      setSelectedItems(prev => {
+        const next = { ...prev };
+        delete next[itemId];
+        return next;
+      });
     } else {
       setSelectedItems(prev => ({
         ...prev,
-        [itemId]: qty
+        [itemId]: newQty
       }));
     }
   };
@@ -240,12 +245,12 @@ export default function NewSignOutPage({
                         <span className="text-[10px] font-black text-red-700 uppercase">Authorized Qty:</span>
                         <div className="flex items-center space-x-2">
                           <button 
-                            onClick={() => updateQty(item.id, selectedItems[item.id] - 1)}
+                            onClick={(e) => { e.stopPropagation(); updateQty(item.id, selectedItems[item.id] - 1); }}
                             className="w-6 h-6 rounded bg-white border border-red-200 flex items-center justify-center text-red-700 font-bold hover:bg-red-100"
                           >-</button>
                           <span className="font-black text-sm w-4 text-center">{selectedItems[item.id]}</span>
                           <button 
-                            onClick={() => updateQty(item.id, selectedItems[item.id] + 1)}
+                            onClick={(e) => { e.stopPropagation(); updateQty(item.id, selectedItems[item.id] + 1); }}
                             className="w-6 h-6 rounded bg-white border border-red-200 flex items-center justify-center text-red-700 font-bold hover:bg-red-100"
                           >+</button>
                         </div>

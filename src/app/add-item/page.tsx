@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Package, X, Upload, Image as ImageIcon, ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
 import { createItem } from '@/app/actions';
 import Link from 'next/link';
+import imageCompression from 'browser-image-compression';
 
 interface SizeEntry {
   id: string;
@@ -22,16 +23,26 @@ export default function AddItemPage() {
   ]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('File is too large. Please upload an image smaller than 2MB.');
-        return;
-      }
+    if (!file) return;
+
+    const options = {
+      maxSizeMB: 1,          // (default: Number.POSITIVE_INFINITY)
+      maxWidthOrHeight: 1920,   // (default: undefined)
+      useWebWorker: true,
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
       const reader = new FileReader();
-      reader.onloadend = () => setBase64Image(reader.result as string);
-      reader.readAsDataURL(file);
+      reader.onloadend = () => {
+        setBase64Image(reader.result as string);
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error('Error compressing the image:', error);
+      alert('There was an error processing your image. Please try another one.');
     }
   };
 

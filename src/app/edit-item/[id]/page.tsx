@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { Package, X, Upload, Image as ImageIcon, ArrowLeft, Save, Plus, Trash2 } from 'lucide-react';
-import { updateItem } from '@/app/actions';
+import { Package, X, Upload, Image as ImageIcon, ArrowLeft, Save, Plus, Trash2, Minus } from 'lucide-react';
+import { updateItem, adjustItemQuantity, deleteItem } from '@/app/actions';
 import Link from 'next/link';
+import imageCompression from 'browser-image-compression';
 
 interface SizeEntry {
   id: string;
@@ -24,6 +25,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [sizes, setSizes] = useState<SizeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [imageModified, setImageModified] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [hasSizes, setHasSizes] = useState(true);
@@ -59,16 +61,55 @@ export default function EditItemPage({ params }: EditItemPageProps) {
     fetchItem();
   }, [id, router]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('File is too large. Please upload an image smaller than 2MB.');
-        return;
+  const handleQuantityChange = async (itemSizeId: string, adjustment: number) => {
+    try {
+      await adjustItemQuantity(itemSizeId, adjustment);
+      // Optimistically update the UI or refetch the item data
+      setSizes(sizes.map(s => 
+        s.id === itemSizeId 
+          ? { ...s, quantity: (parseInt(s.quantity) + adjustment).toString() } 
+          : s
+      ));
+    } catch (error) {
+      console.error('Failed to update quantity:', error);
+      alert('Could not update quantity.');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Are you sure you want to permanently delete this item and all its stock? This action cannot be undone.')) {
+      try {
+        await deleteItem(id);
+        router.push('/inventory');
+        router.refresh();
+      } catch (error) {
+        console.error('Failed to delete item:', error);
+        alert('Could not delete item.');
       }
+    }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const options = {
+      maxSizeMB: 1,
+      maxWidthOrHeight: 1920,
+      useWebWorker: true,
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
       const reader = new FileReader();
-      reader.onloadend = () => setBase64Image(reader.result as string);
-      reader.readAsDataURL(file);
+      reader.onloadend = () => {
+        setBase64Image(reader.result as string);
+        setImageModified(true);
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error('Error compressing image:', error);
+      alert('Failed to process image.');
     }
   };
 
@@ -103,14 +144,24 @@ export default function EditItemPage({ params }: EditItemPageProps) {
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Edit Item: {item.name}</h1>
         </div>
+        <button
+          onClick={handleDelete}
+          className="flex items-center space-x-2 px-4 py-2 rounded-lg border border-red-600 bg-white text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+        >
+          <Trash2 className="h-4 w-4" />
+          <span>Delete Item</span>
+        </button>
       </div>
 
       <form action={async (formData) => {
         setIsUploading(true);
-        if (base64Image) formData.set('imageUrl', base64Image);
+        if (imageModified && base64Image) {
+          formData.set('imageUrl', base64Image);
+        } else if (imageModified && !base64Image) {
+          // Handle case where image is removed
+          formData.set('imageUrl', '');
+        }
 
-        // If the item doesn't have sizes, we create a single standard size entry.
-        // Otherwise, we filter out any empty size rows before submitting.
         const sizesToSubmit = hasSizes
           ? sizes.filter(s => s.size && s.quantity)
           : [{ ...sizes[0], size: 'Standard' }];
@@ -211,30 +262,34 @@ export default function EditItemPage({ params }: EditItemPageProps) {
                 {hasSizes ? (
                   <div className="space-y-3">
                     {sizes.map((s) => (
-                      <div key={s.id} className="flex flex-wrap sm:flex-nowrap items-center gap-2">
-                        <input
-                          type="text"
-                          placeholder="Size (e.g. M-R)"
-                          value={s.size}
-                          onChange={(e) => updateSizeField(s.id, 'size', e.target.value)}
-                          className="flex-grow rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
-                        />
-                        <input
-                          type="number"
-                          placeholder="Qty"
-                          value={s.quantity}
-                          onChange={(e) => updateSizeField(s.id, 'quantity', e.target.value)}
-                          className="w-24 rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
-                          min="0"
-                        />
-                        <button 
-                          type="button" 
-                          onClick={() => removeSize(s.id)}
-                          className="p-3 text-gray-400 hover:text-red-600"
-                        >
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
+                      <div key={s.id} className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Size (e.g. M-R)"
+                            value={s.size}
+                            onChange={(e) => updateSizeField(s.id, 'size', e.target.value)}
+                            className="flex-grow rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm"
+                          />
+                          <div className="flex items-center gap-1">
+                            <button type="button" onClick={() => handleQuantityChange(s.id, -1)} className="p-2 rounded-md hover:bg-gray-100"><Minus className="h-4 w-4"/></button>
+                            <input
+                              type="number"
+                              placeholder="Qty"
+                              value={s.quantity}
+                              onChange={(e) => updateSizeField(s.id, 'quantity', e.target.value)}
+                              className="w-20 rounded-lg border-gray-300 focus:ring-red-500 border p-3 text-sm text-center"
+                              min="0"
+                            />
+                            <button type="button" onClick={() => handleQuantityChange(s.id, 1)} className="p-2 rounded-md hover:bg-gray-100"><Plus className="h-4 w-4"/></button>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => removeSize(s.id)}
+                            className="p-3 text-gray-400 hover:text-red-600"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
                     ))}
                     <button type="button" onClick={addSize} className="text-xs font-bold text-red-700 hover:text-red-800 flex items-center">
                       <Plus className="h-3 w-3 mr-1" /> Add Size
