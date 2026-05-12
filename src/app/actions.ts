@@ -159,6 +159,25 @@ export async function createUser(formData: FormData) {
   revalidatePath('/users');
 }
 
+export async function createUsersInBatch(usersData: string) {
+  const lines = usersData.split('\n').filter(line => line.trim() !== '');
+  const usersToCreate = lines.map(line => {
+    const [name, email] = line.split(',').map(s => s.trim());
+    if (!name || !email) {
+      throw new Error(`Invalid data format: ${line}`);
+    }
+    return { name, email, role: 'USER' as const };
+  });
+
+  const result = await prisma.user.createMany({
+    data: usersToCreate,
+    skipDuplicates: true,
+  });
+
+  revalidatePath('/users');
+  return { createdCount: result.count };
+}
+
 export async function updateUserRole(userId: string, newRole: 'USER' | 'ADMIN') {
   const session = await getServerSession(authOptions);
   if (session?.user?.role !== 'ADMIN') {
@@ -188,6 +207,10 @@ export async function getUser(id: string) {
 }
 
 export async function deleteUser(userId: string) {
+  const session = await getServerSession(authOptions);
+  if (session?.user?.id === userId) {
+    throw new Error("You cannot delete your own account.");
+  }
   await prisma.$transaction(async (tx) => {
     // 1. Fetch the user's name before deleting them.
     const user = await tx.user.findUnique({

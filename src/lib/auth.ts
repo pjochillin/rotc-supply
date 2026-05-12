@@ -36,17 +36,17 @@ if (process.env.NODE_ENV === 'development') {
       name: 'localhost',
       credentials: {},
       async authorize() {
-        const email = 'adc273@cornell.edu';
+        const email = 'jo447@cornell.edu';
         const user = await prisma.user.upsert({
           where: { email },
-          update: { role: 'USER' },
+          update: {},
           create: {
             email,
-            name: 'Andrew Campbell',
-            role: 'USER',
+            name: 'Joshua Ochalek',
+            role: 'ADMIN',
           },
         });
-        console.log('Ensured local development user is USER role.');
+        console.log('Ensured local development user is ADMIN role.');
         return user;
       },
     })
@@ -120,14 +120,7 @@ export const authOptions: NextAuthOptions = {
       if (account && user) { // This block only runs on sign-in
         token.id = user.id;
         token.name = user.name;
-        // For local development, force the role to USER in the token
-        if (account.provider === 'credentials') {
-            console.log('[AUTH] Credentials provider sign-in. Forcing USER role in JWT.');
-            token.role = 'USER';
-        } else {
-            // For other providers, use the role from the user object
-            token.role = user.role;
-        }
+        token.role = user.role;
       }
       return token;
     },

@@ -24,13 +24,20 @@ interface InventoryListProps {
 export default function InventoryList({ items }: InventoryListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
+  const [isCategoryFilterOpen, setIsCategoryFilterOpen] = useState(false);
+  const [isRoomFilterOpen, setIsRoomFilterOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Get a list of unique categories for the filter dropdown
   const categories = useMemo(() => {
     const allCategories = items.map(item => item.category);
     return ['All', ...Array.from(new Set(allCategories))];
+  }, [items]);
+
+  const rooms = useMemo(() => {
+    const allRooms = items.map(item => item.room).filter(Boolean) as string[];
+    return ['All', ...Array.from(new Set(allRooms))];
   }, [items]);
 
   // Filter the items based on the search query and selected category
@@ -47,8 +54,12 @@ export default function InventoryList({ items }: InventoryListProps) {
       filtered = filtered.filter(item => item.category === selectedCategory);
     }
 
+    if (selectedRoom && selectedRoom !== 'All') {
+      filtered = filtered.filter(item => item.room === selectedRoom);
+    }
+
     return filtered;
-  }, [items, searchQuery, selectedCategory]);
+  }, [items, searchQuery, selectedCategory, selectedRoom]);
 
   const getTotalStock = (sizes: Item['sizes']) => {
     return sizes.reduce((acc, s) => acc + s.total, 0);
@@ -85,21 +96,24 @@ export default function InventoryList({ items }: InventoryListProps) {
           />
         </div>
         <div className="relative">
-          <button 
+          <button
             suppressHydrationWarning
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset transition-colors ${(selectedCategory && selectedCategory !== 'All') || isFilterOpen ? 'bg-red-50 text-red-700 ring-red-300 hover:bg-red-100' : 'bg-white text-gray-900 ring-gray-300 hover:bg-gray-50'} w-full justify-center md:w-auto`}
+            onClick={() => {
+              setIsCategoryFilterOpen(!isCategoryFilterOpen);
+              setIsRoomFilterOpen(false);
+            }}
+            className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset transition-colors ${(selectedCategory && selectedCategory !== 'All') || isCategoryFilterOpen ? 'bg-red-50 text-red-700 ring-red-300 hover:bg-red-100' : 'bg-white text-gray-900 ring-gray-300 hover:bg-gray-50'} w-full justify-center md:w-auto`}
           >
-            {isFilterOpen ? (
+            {isCategoryFilterOpen ? (
               <X className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
             ) : (
               <Filter className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
             )}
-            Filter {selectedCategory && selectedCategory !== 'All' && `(${selectedCategory})`}
+            Category {selectedCategory && selectedCategory !== 'All' && `(${selectedCategory})`}
           </button>
           <AnimatePresence>
-            {isFilterOpen && (
-              <motion.div 
+            {isCategoryFilterOpen && (
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
@@ -110,14 +124,14 @@ export default function InventoryList({ items }: InventoryListProps) {
                   <div className="px-4 py-2 flex justify-between items-center">
                     <p className="text-xs font-bold text-gray-500 uppercase">Filter by Category</p>
                     {selectedCategory && selectedCategory !== 'All' && (
-                      <button 
+                      <button
                         onClick={() => {
                           setSelectedCategory('All');
-                          setIsFilterOpen(false);
+                          setIsCategoryFilterOpen(false);
                         }}
                         className="text-xs font-bold text-red-700 hover:text-red-900 flex items-center"
                       >
-                        <X className="h-3 w-3 mr-1"/> Clear
+                        <X className="h-3 w-3 mr-1" /> Clear
                       </button>
                     )}
                   </div>
@@ -128,11 +142,70 @@ export default function InventoryList({ items }: InventoryListProps) {
                       onClick={(e) => {
                         e.preventDefault();
                         setSelectedCategory(category);
-                        setIsFilterOpen(false);
+                        setIsCategoryFilterOpen(false);
                       }}
                       className={`block px-4 py-2 text-sm ${selectedCategory === category ? 'bg-red-50 text-red-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
                     >
                       {category}
+                    </a>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="relative">
+          <button
+            suppressHydrationWarning
+            onClick={() => {
+              setIsRoomFilterOpen(!isRoomFilterOpen);
+              setIsCategoryFilterOpen(false);
+            }}
+            className={`inline-flex items-center rounded-md px-3 py-2 text-sm font-semibold shadow-sm ring-1 ring-inset transition-colors ${(selectedRoom && selectedRoom !== 'All') || isRoomFilterOpen ? 'bg-red-50 text-red-700 ring-red-300 hover:bg-red-100' : 'bg-white text-gray-900 ring-gray-300 hover:bg-gray-50'} w-full justify-center md:w-auto`}
+          >
+            {isRoomFilterOpen ? (
+              <X className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+            ) : (
+              <Filter className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
+            )}
+            Room {selectedRoom && selectedRoom !== 'All' && `(${selectedRoom})`}
+          </button>
+          <AnimatePresence>
+            {isRoomFilterOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.1 }}
+                className="absolute right-0 mt-2 w-56 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none z-10"
+              >
+                <div className="py-1">
+                  <div className="px-4 py-2 flex justify-between items-center">
+                    <p className="text-xs font-bold text-gray-500 uppercase">Filter by Room</p>
+                    {selectedRoom && selectedRoom !== 'All' && (
+                      <button
+                        onClick={() => {
+                          setSelectedRoom('All');
+                          setIsRoomFilterOpen(false);
+                        }}
+                        className="text-xs font-bold text-red-700 hover:text-red-900 flex items-center"
+                      >
+                        <X className="h-3 w-3 mr-1" /> Clear
+                      </button>
+                    )}
+                  </div>
+                  {rooms.map(room => (
+                    <a
+                      key={room}
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setSelectedRoom(room);
+                        setIsRoomFilterOpen(false);
+                      }}
+                      className={`block px-4 py-2 text-sm ${selectedRoom === room ? 'bg-red-50 text-red-700 font-bold' : 'text-gray-700 hover:bg-gray-50'}`}
+                    >
+                      {room}
                     </a>
                   ))}
                 </div>

@@ -182,7 +182,7 @@ export default function EditItemPage({ params }: EditItemPageProps) {
                     defaultValue={item.category}
                     className="mt-2 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-red-500 focus:border-red-500 sm:text-sm p-3 border bg-white"
                   >
-                    <option>Uniform</option><option>Equipment</option><option>Headgear</option><option>Footwear</option><option>APFUs</option><option>Other</option>
+                    <option>Uniform</option><option>Equipment</option><option>Headgear</option><option>Footwear</option><option>APFUs</option><option>ECWCS</option><option>Other</option>
                   </select>
                 </div>
                 <div>

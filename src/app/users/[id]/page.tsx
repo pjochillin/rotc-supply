@@ -121,7 +121,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                   Process Return
                 </button>
               )}
-              <DeleteUserButton userId={id} />
+              <DeleteUserButton userId={id} currentUserId={session?.user?.id} />
             </div>
         </div>
       </div>

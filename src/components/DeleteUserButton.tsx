@@ -5,10 +5,14 @@ import { useRouter } from 'next/navigation';
 import { deleteUser } from '@/app/actions';
 import { Trash2 } from 'lucide-react';
 
-export function DeleteUserButton({ userId }: { userId: string }) {
+export function DeleteUserButton({ userId, currentUserId }: { userId: string, currentUserId: string | undefined }) {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
+
+  if (userId === currentUserId) {
+    return null;
+  }
 
   const handleDelete = async () => {
     setIsDeleting(true);
