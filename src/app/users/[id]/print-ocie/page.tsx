@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getUserOcie } from "@/app/actions";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Package } from "lucide-react";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import PrintButton from "@/components/PrintButton";
 import LogoFallback from "@/components/LogoFallback";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { prisma } from "@/lib/prisma"; // Import prisma
 
 export default async function PrintUserOCIEPage({ 
   params 
@@ -15,40 +16,10 @@ export default async function PrintUserOCIEPage({
   const { id } = await params;
   const session = await getServerSession(authOptions);
 
-  const user = await prisma.user.findUnique({
-    where: { id },
-    include: {
-      receivedTransactions: {
-        where: { status: 'COMPLETED' },
-        include: {
-          items: {
-            include: {
-              item: true,
-              details: {
-                include: {
-                  itemSize: true
-                }
-              }
-            }
-          }
-        },
-        orderBy: { checkoutDate: 'desc' }
-      }
-    }
-  });
+  const user = await prisma.user.findUnique({ where: { id } });
+  const ocieItems = await getUserOcie(id);
 
   if (!user) notFound();
-
-  const items = user.receivedTransactions.flatMap(t => 
-    t.items.flatMap(i => 
-      i.details.map(d => ({
-        ...i.item,
-        size: d.itemSize.size,
-        quantity: d.quantity,
-        checkoutDate: t.checkoutDate
-      }))
-    )
-  );
 
   return (
     <div className="max-w-6xl mx-auto pb-12 print:m-0 print:p-0 print:max-w-none">
@@ -96,12 +67,11 @@ export default async function PrintUserOCIEPage({
               <th className="border-r-2 border-black p-1 w-12 uppercase font-black">Pic</th>
               <th className="border-r-2 border-black p-1 uppercase font-black text-left">Item Description</th>
               <th className="border-r-2 border-black p-1 w-16 uppercase font-black">Size</th>
-              <th className="border-r-2 border-black p-1 w-20 uppercase font-black">Checkout Date</th>
               <th className="p-1 w-24 uppercase font-black">Qty Held</th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item, idx) => (
+            {ocieItems.map((item, idx) => (
               <tr key={idx} className="border-b-2 border-black">
                 <td className="border-r-2 border-black p-0.5 text-center align-middle">
                   {item.imageUrl ? (
@@ -118,17 +88,14 @@ export default async function PrintUserOCIEPage({
                 <td className="border-r-2 border-black p-1 text-center align-middle font-bold text-[10px]">
                   {item.size === 'Standard' ? 'N/A' : item.size}
                 </td>
-                <td className="border-r-2 border-black p-1 text-center align-middle">
-                  {item.checkoutDate.toLocaleDateString()}
-                </td>
                 <td className="p-1 text-center align-middle font-black text-sm">
                   {item.quantity}
                 </td>
               </tr>
             ))}
-            {items.length === 0 && (
+            {ocieItems.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-12 text-center italic text-gray-400">
+                <td colSpan={4} className="p-12 text-center italic text-gray-400">
                   No items currently signed out to this cadet.
                 </td>
               </tr>
