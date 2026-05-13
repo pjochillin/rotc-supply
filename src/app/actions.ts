@@ -12,17 +12,7 @@ export async function createItem(formData: FormData) {
   const room = formData.get('room') as string;
   const shelf = formData.get('shelf') as string;
 
-  const dataToUpdate: { name: string, category: string, room: string, shelf: string, imageUrl?: string } = {
-    name,
-    category,
-    room,
-    shelf,
-  };
-
-  if (formData.has('imageUrl')) {
-    dataToUpdate.imageUrl = formData.get('imageUrl') as string;
-  }
-  
+  const imageUrl = formData.get('imageUrl') as string;
   const sizesJson = formData.get('sizes') as string;
   let sizesData = sizesJson ? JSON.parse(sizesJson) : [];
   if (sizesData.length === 0) {
@@ -35,7 +25,7 @@ export async function createItem(formData: FormData) {
       category,
       room,
       shelf,
-      imageUrl,
+      imageUrl: formData.get('imageUrl') as string,
       sizes: {
         create: sizesData.map((s: { size: string; quantity: string }) => ({
           size: s.size,
@@ -81,7 +71,17 @@ export async function updateItem(id: string, formData: FormData) {
   const category = formData.get('category') as string;
   const room = formData.get('room') as string;
   const shelf = formData.get('shelf') as string;
-  const imageUrl = formData.get('imageUrl') as string;
+
+  const dataToUpdate: { name: string, category: string, room: string, shelf: string, imageUrl?: string } = {
+    name,
+    category,
+    room,
+    shelf,
+  };
+
+  if (formData.has('imageUrl')) {
+    dataToUpdate.imageUrl = formData.get('imageUrl') as string;
+  }
 
   const sizesJson = formData.get('sizes') as string;
   // If sizes are not provided or the field is empty, default to an empty array.
